@@ -13,6 +13,7 @@ public class Activity {
 
     public static Activity create(String name, String detail, Long iconId) {
         validateName(name);
+        if (iconId == null) throw new IllegalArgumentException("iconId is required");
         Activity a = new Activity();
         a.name = name.trim();
         a.detail = detail;

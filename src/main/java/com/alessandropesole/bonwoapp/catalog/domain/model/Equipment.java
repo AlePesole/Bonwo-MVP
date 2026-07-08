@@ -12,6 +12,7 @@ public class Equipment {
 
     public static Equipment create(String name, Long iconId) {
         validateName(name);
+        if (iconId == null) throw new IllegalArgumentException("iconId is required");
         Equipment e = new Equipment();
         e.name = name.trim();
         e.iconId = iconId;

@@ -13,6 +13,7 @@ public class TrainingGoal {
 
     public static TrainingGoal create(String name, String detail, Long iconId) {
         validateName(name);
+        if (iconId == null) throw new IllegalArgumentException("iconId is required");
         TrainingGoal t = new TrainingGoal();
         t.name    = name.trim();
         t.detail  = detail;
