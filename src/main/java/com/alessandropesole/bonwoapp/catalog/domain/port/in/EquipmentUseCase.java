@@ -8,9 +8,9 @@ import java.util.List;
 public interface EquipmentUseCase {
     List<EquipmentResponse> listAll();
 
-    EquipmentResponse create(EquipmentRequest request);
+    EquipmentResponse create(EquipmentRequest request, Long adminId);
 
-    EquipmentResponse update(Long id, EquipmentRequest request);
+    EquipmentResponse update(Long id, EquipmentRequest request, Long adminId);
 
     void delete(Long id);
 }
