@@ -142,7 +142,6 @@ public class MediaService {
     /**
      * Deletes an image from MediaStorage and BD.
      * Only deletes if ownerId matches — silently skips if not owner or not found.
-     * Never deletes inheritedThumbnailId — call only with the entity's own thumbnailId.
      */
     public void deleteImageIfOwner(Long imageId, Long ownerId) {
         if (imageId == null) return;
