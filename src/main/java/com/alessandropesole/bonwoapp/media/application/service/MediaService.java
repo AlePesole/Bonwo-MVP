@@ -183,4 +183,13 @@ public class MediaService {
         }
         imageRepository.deleteById(i.getId());
     }
+
+    /**
+     * Deletes an image unconditionally — no owner check.
+     * Use only from admin operations where authorization is already enforced.
+     */
+    public void deleteImage(Long imageId) {
+        if (imageId == null) return;
+        imageRepository.findById(imageId).ifPresent(this::deleteImageInternal);
+    }
 }
