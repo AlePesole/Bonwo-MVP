@@ -6,5 +6,5 @@ import jakarta.validation.constraints.Size;
 public record TrainingGoalRequest(
         @NotBlank @Size(max = 100) String name,
         String detail,
-        Long iconId
+        String iconUploadToken
 ) {}

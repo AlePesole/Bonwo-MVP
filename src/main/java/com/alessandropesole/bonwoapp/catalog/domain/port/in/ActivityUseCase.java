@@ -8,9 +8,9 @@ import java.util.List;
 public interface ActivityUseCase {
     List<ActivityResponse> listAll();
 
-    ActivityResponse create(ActivityRequest request);
+    ActivityResponse create(ActivityRequest request, Long adminId);
 
-    ActivityResponse update(Long id, ActivityRequest request);
+    ActivityResponse update(Long id, ActivityRequest request, Long adminId);
 
     void delete(Long id);
 }
