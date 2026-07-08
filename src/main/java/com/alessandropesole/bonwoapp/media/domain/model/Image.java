@@ -18,9 +18,7 @@ public class Image extends AggregateRoot {
     private Instant expiresAt;
     private Instant createdAt;
 
-    private static final long PENDING_TTL_MINUTES = 15;
-
-    public static Image createPending(Long ownerId, String externalId, String url) {
+    public static Image createPending(Long ownerId, String externalId, String url, Long ttlMinutes) {
         if (ownerId    == null) throw new IllegalArgumentException("ownerId required");
         if (externalId == null || externalId.isBlank())
             throw new IllegalArgumentException("externalId required");
@@ -31,7 +29,7 @@ public class Image extends AggregateRoot {
         i.url         = url;
         i.status      = ImageStatus.PENDING;
         i.uploadToken = UUID.randomUUID().toString();
-        i.expiresAt   = Instant.now().plusSeconds(PENDING_TTL_MINUTES * 60);
+        i.expiresAt   = Instant.now().plusSeconds(ttlMinutes * 60);
         i.createdAt   = Instant.now();
         return i;
     }

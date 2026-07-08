@@ -21,15 +21,13 @@ public class Video extends AggregateRoot {
     private Instant expiresAt;
     private Instant createdAt;
 
-    private static final long PENDING_TTL_MINUTES = 15;
-
     /**
      * Creates a PENDING video just uploaded to the provider.
      * Generates an uploadToken the entity creation request must include.
      */
     public static Video createPending(Long ownerId, String externalId,
                                        String url, String thumbnailUrl,
-                                       Integer durationSeconds) {
+                                       Integer durationSeconds, Long ttlMinutes) {
         if (ownerId    == null) throw new IllegalArgumentException("ownerId required");
         if (externalId == null || externalId.isBlank())
             throw new IllegalArgumentException("externalId required");
@@ -42,7 +40,7 @@ public class Video extends AggregateRoot {
         v.durationSeconds = durationSeconds;
         v.status          = VideoStatus.PENDING;
         v.uploadToken     = UUID.randomUUID().toString();
-        v.expiresAt       = Instant.now().plusSeconds(PENDING_TTL_MINUTES * 60);
+        v.expiresAt       = Instant.now().plusSeconds(ttlMinutes * 60);
         v.createdAt       = Instant.now();
         return v;
     }

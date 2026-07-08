@@ -1,3 +1,7 @@
 spring:
   application:
     name: bonwoapp
+
+app:
+  media:
+    pending-ttl-minutes: ${MEDIA_PENDING_TTL_MINUTES:15}
