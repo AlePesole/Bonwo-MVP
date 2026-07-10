@@ -6,7 +6,6 @@ public class ResourceNotFoundException extends RuntimeException {
         super(resource + " not found with id: " + id);
     }
 
-    /** Constructor for multi-id validation failures. */
     public ResourceNotFoundException(String message) {
         super(message);
     }
