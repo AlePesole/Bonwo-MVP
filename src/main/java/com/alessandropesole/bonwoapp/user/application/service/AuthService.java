@@ -9,8 +9,10 @@ import com.alessandropesole.bonwoapp.shared.infrastructure.security.JwtService;
 import com.alessandropesole.bonwoapp.user.application.dto.*;
 import com.alessandropesole.bonwoapp.user.application.mapper.UserDtoMapper;
 import com.alessandropesole.bonwoapp.user.domain.model.AccountStatus;
+import com.alessandropesole.bonwoapp.user.domain.model.RefreshToken;
 import com.alessandropesole.bonwoapp.user.domain.model.User;
 import com.alessandropesole.bonwoapp.user.domain.port.in.AuthUseCase;
+import com.alessandropesole.bonwoapp.user.domain.port.out.RefreshTokenRepository;
 import com.alessandropesole.bonwoapp.user.domain.port.out.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -19,6 +21,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.Map;
 
 @Service
@@ -27,6 +30,7 @@ import java.util.Map;
 public class AuthService implements AuthUseCase {
 
     private final UserRepository userRepository;
+    private final RefreshTokenRepository refreshTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
@@ -59,17 +63,44 @@ public class AuthService implements AuthUseCase {
 
     @Override
     public AuthResponse refreshToken(String refreshToken) {
-        if (!jwtService.isTokenValid(refreshToken)) throw new InvalidRefreshTokenException();
+        if (!jwtService.isTokenValid(refreshToken) || !jwtService.isRefreshToken(refreshToken)) {
+            throw new InvalidRefreshTokenException();
+        }
+
+        String tokenId = jwtService.extractId(refreshToken);
+        RefreshToken stored = refreshTokenRepository.findByTokenId(tokenId)
+                .filter(RefreshToken::isUsable)
+                .orElseThrow(InvalidRefreshTokenException::new);
+        stored.revoke();
+        refreshTokenRepository.save(stored);
+
         String email = jwtService.extractSubject(refreshToken);
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new UserNotFoundException(email));
         return buildAuthResponse(user);
     }
 
+    @Override
+    public void logout(String refreshToken) {
+        if (!jwtService.isTokenValid(refreshToken) || !jwtService.isRefreshToken(refreshToken)) {
+            return;
+        }
+        String tokenId = jwtService.extractId(refreshToken);
+        refreshTokenRepository.findByTokenId(tokenId).ifPresent(stored -> {
+            stored.revoke();
+            refreshTokenRepository.save(stored);
+        });
+    }
+
     private AuthResponse buildAuthResponse(User user) {
         Map<String, Object> claims = Map.of("role", user.getRole().name());
         String access = jwtService.generateToken(user.getEmail(), claims);
         String refresh = jwtService.generateRefreshToken(user.getEmail());
+
+        String tokenId = jwtService.extractId(refresh);
+        Instant expiresAt = jwtService.extractExpiration(refresh);
+        refreshTokenRepository.save(RefreshToken.issue(user.getId(), tokenId, expiresAt));
+
         return AuthResponse.of(access, refresh, UserDtoMapper.toResponse(user));
     }
 }
