@@ -11,4 +11,6 @@ public interface AuthUseCase {
     AuthResponse login(AuthRequest request);
 
     AuthResponse refreshToken(String refreshToken);
+
+    void logout(String refreshToken);
 }
