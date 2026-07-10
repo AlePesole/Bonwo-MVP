@@ -13,12 +13,12 @@ public final class UserProfile {
     private final Long avatarId;
     private final String bio;
     private final Integer ageYears;
-    private final Double heightCm;
+    private final Integer heightCm;
     private final Double weightKg;
     private final Set<Long> activityIds;   // no duplicates
 
     private UserProfile(Long avatarId, String bio,
-                        Integer ageYears, Double heightCm, Double weightKg,
+                        Integer ageYears, Integer heightCm, Double weightKg,
                         Set<Long> activityIds) {
         this.avatarId = avatarId;
         this.bio = bio;
@@ -33,7 +33,7 @@ public final class UserProfile {
     }
 
     public static UserProfile of(Long avatarId, String bio,
-                                 Integer ageYears, Double heightCm, Double weightKg,
+                                 Integer ageYears, Integer heightCm, Double weightKg,
                                  Set<Long> activityIds) {
         validate(ageYears, heightCm, weightKg, bio);
         return new UserProfile(avatarId, bio, ageYears, heightCm, weightKg,
@@ -45,18 +45,18 @@ public final class UserProfile {
     }
 
     public UserProfile applyUpdate(String bio, Integer ageYears,
-                                   Double heightCm, Double weightKg,
+                                   Integer heightCm, Double weightKg,
                                    Set<Long> activityIds) {
         String newBio = bio != null ? bio : this.bio;
         Integer newAge = ageYears != null ? ageYears : this.ageYears;
-        Double newHeight = heightCm != null ? heightCm : this.heightCm;
+        Integer newHeight = heightCm != null ? heightCm : this.heightCm;
         Double newWeight = weightKg != null ? weightKg : this.weightKg;
         Set<Long> newActs = activityIds != null ? activityIds : this.activityIds;
         validate(newAge, newHeight, newWeight, newBio);
         return new UserProfile(this.avatarId, newBio, newAge, newHeight, newWeight, newActs);
     }
 
-    private static void validate(Integer age, Double height, Double weight, String bio) {
+    private static void validate(Integer age, Integer height, Double weight, String bio) {
         if (age != null && (age < 13 || age > 120))
             throw new InvalidProfileDataException("Age must be between 13 and 120");
         if (height != null && (height < 50 || height > 300))
