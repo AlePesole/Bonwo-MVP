@@ -11,7 +11,7 @@ public record UserProfileResponse(
         ImageResponse avatar,
         String bio,
         Integer ageYears,
-        Double heightCm,
+        Integer heightCm,
         Double weightKg,
         List<ActivityResponse> activities
 ) {}
