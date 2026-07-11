@@ -34,8 +34,8 @@ spring:
 
   servlet:
     multipart:
-      max-file-size: 500MB
-      max-request-size: 500MB
+      max-file-size: 50MB
+      max-request-size: 50MB
 
 server:
   port: 8080
@@ -49,3 +49,8 @@ app:
     refresh-expiration-ms: ${JWT_REFRESH_EXPIRATION_MS:2592000000}
   media:
     pending-ttl-minutes: ${MEDIA_PENDING_TTL_MINUTES:15}
+
+cloudinary:
+  cloud-name: ${CLOUDINARY_CLOUD_NAME}
+  api-key: ${CLOUDINARY_API_KEY}
+  api-secret: ${CLOUDINARY_API_SECRET}
