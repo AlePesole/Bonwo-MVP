@@ -5,6 +5,7 @@ import com.alessandropesole.bonwoapp.catalog.domain.port.in.ActivityUseCase;
 import com.alessandropesole.bonwoapp.catalog.domain.port.in.EquipmentUseCase;
 import com.alessandropesole.bonwoapp.catalog.domain.port.in.TrainingGoalUseCase;
 import com.alessandropesole.bonwoapp.user.application.service.CurrentUserResolver;
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -28,11 +29,19 @@ public class CatalogController {
 
     // -- Equipment --
 
+    @Operation(
+            summary = "List equipment",
+            description = "Returns all equipment items in the catalog. No authentication required."
+    )
     @GetMapping("/equipment")
     public ResponseEntity<List<EquipmentResponse>> listEquipment() {
         return ResponseEntity.ok(equipmentUseCase.listAll());
     }
 
+    @Operation(
+            summary = "Create equipment",
+            description = "Adds a new equipment item to the catalog. Admin only."
+    )
     @PostMapping("/equipment")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<EquipmentResponse> createEquipment(
@@ -42,6 +51,10 @@ public class CatalogController {
                 .body(equipmentUseCase.create(request, currentUserResolver.resolveId(principal)));
     }
 
+    @Operation(
+            summary = "Update equipment",
+            description = "Updates an existing equipment item's details. Admin only."
+    )
     @PutMapping("/equipment/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<EquipmentResponse> updateEquipment(
@@ -52,6 +65,10 @@ public class CatalogController {
                 equipmentUseCase.update(id, request, currentUserResolver.resolveId(principal)));
     }
 
+    @Operation(
+            summary = "Delete equipment",
+            description = "Removes an equipment item from the catalog. Admin only."
+    )
     @DeleteMapping("/equipment/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deleteEquipment(@PathVariable Long id) {
@@ -61,11 +78,19 @@ public class CatalogController {
 
     // -- Activity --
 
+    @Operation(
+            summary = "List activities",
+            description = "Returns all activities in the catalog. No authentication required."
+    )
     @GetMapping("/activities")
     public ResponseEntity<List<ActivityResponse>> listActivities() {
         return ResponseEntity.ok(activityUseCase.listAll());
     }
 
+    @Operation(
+            summary = "Create an activity",
+            description = "Adds a new activity to the catalog. Admin only."
+    )
     @PostMapping("/activities")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ActivityResponse> createActivity(
@@ -75,6 +100,10 @@ public class CatalogController {
                 .body(activityUseCase.create(request, currentUserResolver.resolveId(principal)));
     }
 
+    @Operation(
+            summary = "Update an activity",
+            description = "Updates an existing activity's details. Admin only."
+    )
     @PutMapping("/activities/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ActivityResponse> updateActivity(
@@ -85,6 +114,10 @@ public class CatalogController {
                 activityUseCase.update(id, request, currentUserResolver.resolveId(principal)));
     }
 
+    @Operation(
+            summary = "Delete an activity",
+            description = "Removes an activity from the catalog. Admin only."
+    )
     @DeleteMapping("/activities/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deleteActivity(@PathVariable Long id) {
@@ -94,11 +127,19 @@ public class CatalogController {
 
     // -- TrainingGoal --
 
+    @Operation(
+            summary = "List training goals",
+            description = "Returns all training goals in the catalog. No authentication required."
+    )
     @GetMapping("/training-goals")
     public ResponseEntity<List<TrainingGoalResponse>> listTrainingGoals() {
         return ResponseEntity.ok(trainingGoalUseCase.listAll());
     }
 
+    @Operation(
+            summary = "Create a training goal",
+            description = "Adds a new training goal to the catalog. Admin only."
+    )
     @PostMapping("/training-goals")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<TrainingGoalResponse> createTrainingGoal(
@@ -108,6 +149,10 @@ public class CatalogController {
                 .body(trainingGoalUseCase.create(request, currentUserResolver.resolveId(principal)));
     }
 
+    @Operation(
+            summary = "Update a training goal",
+            description = "Updates an existing training goal's details. Admin only."
+    )
     @PutMapping("/training-goals/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<TrainingGoalResponse> updateTrainingGoal(
@@ -118,6 +163,10 @@ public class CatalogController {
                 trainingGoalUseCase.update(id, request, currentUserResolver.resolveId(principal)));
     }
 
+    @Operation(
+            summary = "Delete a training goal",
+            description = "Removes a training goal from the catalog. Admin only."
+    )
     @DeleteMapping("/training-goals/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deleteTrainingGoal(@PathVariable Long id) {
