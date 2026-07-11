@@ -2,9 +2,9 @@ package com.alessandropesole.bonwoapp.catalog.domain.port.out;
 
 import com.alessandropesole.bonwoapp.catalog.domain.model.TrainingGoal;
 
-import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 public interface TrainingGoalRepository {
     TrainingGoal save(TrainingGoal trainingGoal);
@@ -13,7 +13,7 @@ public interface TrainingGoalRepository {
 
     List<TrainingGoal> findAll();
 
-    List<TrainingGoal> findAllById(Collection<Long> ids);
+    List<TrainingGoal> findAllById(Set<Long> ids);
 
     boolean existsByName(String name);
 

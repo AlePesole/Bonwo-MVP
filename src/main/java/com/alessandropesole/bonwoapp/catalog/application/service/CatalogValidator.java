@@ -7,7 +7,6 @@ import com.alessandropesole.bonwoapp.shared.infrastructure.exception.ResourceNot
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
-import java.util.Collection;
 import java.util.Set;
 
 @Component
@@ -44,7 +43,7 @@ public class CatalogValidator {
         }
     }
 
-    public void validateTrainingGoals(Collection<Long> ids) {
+    public void validateTrainingGoals(Set<Long> ids) {
         if (ids == null || ids.isEmpty()) return;
         int found = trainingGoalRepository.findAllById(ids).size();
         if (found != ids.size()) {
