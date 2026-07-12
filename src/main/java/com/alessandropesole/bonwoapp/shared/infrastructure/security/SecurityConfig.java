@@ -42,6 +42,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/catalog/**").permitAll()
                         .requestMatchers("/catalog/**").hasRole("ADMIN")
                         .requestMatchers("/admin/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/users/me").authenticated()
+                        .requestMatchers(HttpMethod.PATCH, "/users/me").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/users/**").permitAll()
 
                         .anyRequest().authenticated()
                 )
