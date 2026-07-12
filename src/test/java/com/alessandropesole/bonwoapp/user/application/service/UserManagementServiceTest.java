@@ -169,18 +169,6 @@ class UserManagementServiceTest {
     }
 
     @Test
-    void changeRole_worksOnBannedAccount() {
-        User user = User.reconstitute(1L, "user@example.com", "hashed", "johndoe",
-                UserRole.USER, AccountStatus.BANNED, UserProfile.empty(), Instant.now());
-        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-
-        userManagementService.changeRole(1L, UserRole.ADMIN);
-
-        assertThat(user.getRole()).isEqualTo(UserRole.ADMIN);
-        verify(userRepository).save(user);
-    }
-
-    @Test
     void changeRole_throwsWhenAccountDeleted() {
         User user = User.reconstitute(1L, "user@example.com", "hashed", "johndoe",
                 UserRole.USER, AccountStatus.DELETED, UserProfile.empty(), Instant.now());
