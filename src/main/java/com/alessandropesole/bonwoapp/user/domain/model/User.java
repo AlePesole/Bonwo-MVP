@@ -87,6 +87,7 @@ public class User extends AggregateRoot {
     }
 
     public void changeRole(UserRole newRole) {
+        if (this.status == AccountStatus.DELETED) throw new AccountDeletedException(this.email);
         this.role = newRole;
     }
 
@@ -105,9 +106,9 @@ public class User extends AggregateRoot {
     }
 
     private static void validateUsername(String name) {
-        if (name == null || name.isBlank() || name.length() > 30
+        if (name == null || name.isBlank() || name.length() < 3 || name.length() > 30
                 || !name.matches("^[a-zA-Z0-9_]+$")) {
-            throw new InvalidUsernameException(
+        throw new InvalidUsernameException(
                     "Username must be 3-30 characters and contain only letters, numbers and underscores");
         }
     }
