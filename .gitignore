@@ -34,3 +34,10 @@ build/
 
 ### Env ###
 .env
+.env.local
+.env.*.local
+
+### Frontend ###
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
