@@ -49,6 +49,10 @@ app:
     refresh-expiration-ms: ${JWT_REFRESH_EXPIRATION_MS:2592000000}
   media:
     pending-ttl-minutes: ${MEDIA_PENDING_TTL_MINUTES:15}
+  admin-seed:
+    email: ${ADMIN_EMAIL:}
+    username: ${ADMIN_USERNAME:}
+    password: ${ADMIN_PASSWORD:}
 
 cloudinary:
   cloud-name: ${CLOUDINARY_CLOUD_NAME}

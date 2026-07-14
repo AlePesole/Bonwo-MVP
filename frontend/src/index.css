@@ -1,0 +1,63 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* Light theme (fallback) */
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 8%;
+    --card: 0 0% 98%;
+    --card-foreground: 0 0% 8%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 8%;
+    --primary: 22 100% 52%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 94%;
+    --secondary-foreground: 0 0% 20%;
+    --muted: 0 0% 94%;
+    --muted-foreground: 0 0% 45%;
+    --accent: 22 100% 96%;
+    --accent-foreground: 22 100% 40%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 88%;
+    --input: 0 0% 88%;
+    --ring: 22 100% 52%;
+    --radius: 0.5rem;
+  }
+
+  /* Dark theme — default for Bonwo */
+  .dark {
+    --background: 0 0% 6%;          /* #0f0f0f */
+    --foreground: 0 0% 93%;         /* #ededed */
+    --card: 0 0% 10%;               /* #1a1a1a */
+    --card-foreground: 0 0% 93%;
+    --popover: 0 0% 10%;
+    --popover-foreground: 0 0% 93%;
+    --primary: 22 100% 54%;         /* #ff6a00 — matches logo orange */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 15%;          /* #262626 */
+    --secondary-foreground: 0 0% 85%;
+    --muted: 0 0% 14%;
+    --muted-foreground: 0 0% 52%;
+    --accent: 0 0% 16%;
+    --accent-foreground: 0 0% 93%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 18%;             /* subtle dark border */
+    --input: 0 0% 16%;
+    --ring: 22 100% 54%;
+    --radius: 0.5rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
