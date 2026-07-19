@@ -8,6 +8,7 @@ import { MyProfilePage } from "@/profile/MyProfilePage";
 import { PublicProfilePage } from "@/profile/PublicProfilePage";
 import { AdminUsersPage } from "@/admin/AdminUsersPage";
 import { AdminCatalogPage } from "@/admin/AdminCatalogPage";
+import { CatalogPage } from "@/catalog/CatalogPage";
 
 export default function App() {
   return (
@@ -21,6 +22,14 @@ export default function App() {
         <Route element={<Layout />}>
           <Route index element={<Navigate to="/profile" replace />} />
           <Route path="/users/:username" element={<PublicProfilePage />} />
+          <Route
+            path="/catalog"
+            element={
+              <ProtectedRoute requireAdmin>
+                <CatalogPage />
+              </ProtectedRoute>
+            }
+          />
 
           <Route
             path="/profile"

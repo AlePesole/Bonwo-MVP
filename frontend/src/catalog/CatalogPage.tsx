@@ -1,12 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { catalogApi } from "./api";
+import { MuscleMap } from "./MuscleMap";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { PageSpinner } from "@/components/Spinner";
 import { ApiError } from "@/components/ApiError";
 import { getErrorMessage } from "@/lib/axios";
 import type { ActivityResponse, EquipmentResponse, TrainingGoalResponse } from "@/types/api";
-import { Dumbbell, Target, Wrench } from "lucide-react";
+import { Dumbbell, PersonStanding, Target, Wrench } from "lucide-react";
 
 function CatalogItemCard({
   icon,
@@ -104,26 +105,32 @@ function TrainingGoalsTab() {
 export function CatalogPage() {
   return (
     <div className="max-w-4xl mx-auto">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold">Catalog</h1>
-        <p className="text-muted-foreground mt-1">Browse activities, equipment and training goals</p>
+      <div className="mb-6 text-center">
+        <h1 className="text-3xl font-bold">Browse Catalog</h1>
+        <p className="text-muted-foreground mt-1">Browse activities, equipment, training goals and muscles</p>
       </div>
 
       <Tabs defaultValue="activities">
-        <TabsList className="mb-6">
-          <TabsTrigger value="activities" className="gap-1.5">
-            <Dumbbell className="h-4 w-4" />
-            Activities
-          </TabsTrigger>
-          <TabsTrigger value="equipment" className="gap-1.5">
-            <Wrench className="h-4 w-4" />
-            Equipment
-          </TabsTrigger>
-          <TabsTrigger value="goals" className="gap-1.5">
-            <Target className="h-4 w-4" />
-            Training Goals
-          </TabsTrigger>
-        </TabsList>
+        <div className="flex justify-center mb-6">
+          <TabsList>
+            <TabsTrigger value="activities" className="gap-1.5">
+              <Dumbbell className="h-4 w-4" />
+              Activities
+            </TabsTrigger>
+            <TabsTrigger value="equipment" className="gap-1.5">
+              <Wrench className="h-4 w-4" />
+              Equipment
+            </TabsTrigger>
+            <TabsTrigger value="goals" className="gap-1.5">
+              <Target className="h-4 w-4" />
+              Training Goals
+            </TabsTrigger>
+            <TabsTrigger value="muscles" className="gap-1.5">
+              <PersonStanding className="h-4 w-4" />
+              Muscles
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="activities">
           <ActivityTab />
@@ -133,6 +140,9 @@ export function CatalogPage() {
         </TabsContent>
         <TabsContent value="goals">
           <TrainingGoalsTab />
+        </TabsContent>
+        <TabsContent value="muscles">
+          <MuscleMap />
         </TabsContent>
       </Tabs>
     </div>

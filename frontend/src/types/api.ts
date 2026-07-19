@@ -66,6 +66,23 @@ export interface TrainingGoalResponse {
   icon: ImageResponse | null;
 }
 
+export interface MuscleSubGroupResponse {
+  id: number;
+  groupId: number;
+  name: string;
+  detail: string | null;
+  svgPathFront: string | null;
+  svgPathBack: string | null;
+  icon: ImageResponse | null;
+}
+
+export interface MuscleGroupResponse {
+  id: number;
+  name: string;
+  icon: ImageResponse | null;
+  subGroups: MuscleSubGroupResponse[];
+}
+
 // ── User Profile ──────────────────────────────────────────────────────────────
 
 export interface UserProfileResponse {

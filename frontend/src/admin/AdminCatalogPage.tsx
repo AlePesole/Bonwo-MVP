@@ -7,12 +7,17 @@ import {
   adminActivityApi,
   adminEquipmentApi,
   adminTrainingGoalApi,
+  adminMuscleGroupApi,
+  adminMuscleSubGroupApi,
   type ActivityRequest,
   type EquipmentRequest,
   type TrainingGoalRequest,
+  type MuscleGroupRequest,
+  type CreateMuscleSubGroupRequest,
+  type UpdateMuscleSubGroupRequest,
 } from "./catalogApi";
 import { api, getErrorMessage } from "@/lib/axios";
-import type { ActivityResponse, EquipmentResponse, ImageUploadResponse, TrainingGoalResponse } from "@/types/api";
+import type { ActivityResponse, EquipmentResponse, ImageUploadResponse, MuscleGroupResponse, MuscleSubGroupResponse, TrainingGoalResponse } from "@/types/api";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,7 +32,7 @@ import {
 } from "@/components/ui/dialog";
 import { ApiError } from "@/components/ApiError";
 import { PageSpinner, Spinner } from "@/components/Spinner";
-import { Dumbbell, Flame, ImagePlus, Pencil, Plus, Target, Trash2, Wrench } from "lucide-react";
+import { ChevronDown, ChevronRight, Dumbbell, Flame, ImagePlus, Layers, Pencil, Plus, Target, Trash2, X } from "lucide-react";
 
 // ── Shared icon upload hook ───────────────────────────────────────────────────
 
@@ -488,6 +493,431 @@ function TrainingGoalsTab() {
   );
 }
 
+// ── Muscles tab ───────────────────────────────────────────────────────────────
+
+const MUSCLE_KEYS = [["admin", "muscles"], ["catalog", "muscles"]] as const;
+const invalidateMuscles = (qc: ReturnType<typeof useQueryClient>) =>
+  MUSCLE_KEYS.forEach((key) => qc.invalidateQueries({ queryKey: key }));
+
+// Zod schemas
+const groupSchema = z.object({ name: z.string().min(3, "Min. 3 chars").max(100) });
+type GroupForm = z.infer<typeof groupSchema>;
+
+const subGroupSchema = z
+  .object({
+    name: z.string().min(3, "Min. 3 chars").max(100),
+    detail: z.string().optional(),
+    svgPathFront: z.string().optional(),
+    svgPathBack: z.string().optional(),
+  })
+  .refine((d) => (d.svgPathFront?.trim() || d.svgPathBack?.trim()), {
+    message: "At least one SVG path (front or back) is required",
+    path: ["svgPathFront"],
+  });
+type SubGroupForm = z.infer<typeof subGroupSchema>;
+
+// Small path indicator badge
+function PathBadge({ label, filled }: { label: string; filled: boolean }) {
+  return (
+    <span
+      className={`inline-flex items-center justify-center text-[10px] font-bold rounded px-1.5 py-0.5 leading-none ${
+        filled
+          ? "bg-primary/20 text-primary border border-primary/30"
+          : "bg-muted text-muted-foreground border border-border"
+      }`}
+    >
+      {label}
+    </span>
+  );
+}
+
+// Dialog for creating / editing a MuscleSubGroup
+function SubGroupDialog({
+  open,
+  groupId,
+  editing,
+  onClose,
+  onSuccess,
+}: {
+  open: boolean;
+  groupId: number;
+  editing: MuscleSubGroupResponse | null;
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const icon = useIconUpload();
+  const qc = useQueryClient();
+  const [serverError, setServerError] = useState<string | null>(null);
+  const [cleared, setCleared] = useState<Set<"svgPathFront" | "svgPathBack">>(new Set());
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    setValue,
+    formState: { errors },
+  } = useForm<SubGroupForm>({ resolver: zodResolver(subGroupSchema) });
+
+  React.useEffect(() => {
+    if (open) {
+      icon.reset(editing?.icon?.url ?? null);
+      setCleared(new Set());
+      reset({
+        name: editing?.name ?? "",
+        detail: editing?.detail ?? "",
+        svgPathFront: editing?.svgPathFront ?? "",
+        svgPathBack: editing?.svgPathBack ?? "",
+      });
+      setServerError(null);
+    }
+  }, [open, editing]);
+
+  const clearPath = (field: "svgPathFront" | "svgPathBack") => {
+    setValue(field, "");
+    setCleared((prev) => new Set([...prev, field]));
+  };
+
+  // For edit: "" = delete, null = don't touch, string = set value.
+  // For create: cleared state is irrelevant (all fields start empty).
+  const buildPath = (field: "svgPathFront" | "svgPathBack", value?: string): string | null => {
+    const trimmed = value?.trim();
+    if (trimmed) return trimmed;
+    if (cleared.has(field)) return "";
+    return null;
+  };
+
+  const mutation = useMutation({
+    mutationFn: (data: SubGroupForm) => {
+      if (editing) {
+        return adminMuscleSubGroupApi.update(editing.id, {
+          name: data.name,
+          detail: data.detail?.trim() || null,
+          svgPathFront: buildPath("svgPathFront", data.svgPathFront),
+          svgPathBack: buildPath("svgPathBack", data.svgPathBack),
+          iconUploadToken: icon.token,
+        });
+      }
+      return adminMuscleSubGroupApi.create({
+        groupId,
+        name: data.name,
+        detail: data.detail?.trim() || undefined,
+        svgPathFront: data.svgPathFront?.trim() || undefined,
+        svgPathBack: data.svgPathBack?.trim() || undefined,
+        iconUploadToken: icon.token,
+      });
+    },
+    onSuccess: () => {
+      invalidateMuscles(qc);
+      onSuccess();
+    },
+    onError: (err) => setServerError(getErrorMessage(err)),
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>{editing ? "Edit Muscle SubGroup" : "New Muscle SubGroup"}</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit((d) => mutation.mutate(d))} className="space-y-4">
+          {serverError && <ApiError message={serverError} />}
+
+          <div className="space-y-1.5">
+            <Label>Name</Label>
+            <Input {...register("name")} placeholder="e.g. Pectoralis Major" />
+            {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Description <span className="text-muted-foreground">(optional)</span></Label>
+            <Textarea {...register("detail")} rows={2} placeholder="Short description…" />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label>SVG Path — Front</Label>
+                {editing && (
+                  <button
+                    type="button"
+                    onClick={() => clearPath("svgPathFront")}
+                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive transition-colors"
+                  >
+                    <X className="h-3 w-3" /> Clear
+                  </button>
+                )}
+              </div>
+              <Textarea
+                {...register("svgPathFront")}
+                rows={3}
+                placeholder="M 0 0 L … (front view)"
+                className="font-mono text-xs"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label>SVG Path — Back</Label>
+                {editing && (
+                  <button
+                    type="button"
+                    onClick={() => clearPath("svgPathBack")}
+                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive transition-colors"
+                  >
+                    <X className="h-3 w-3" /> Clear
+                  </button>
+                )}
+              </div>
+              <Textarea
+                {...register("svgPathBack")}
+                rows={3}
+                placeholder="M 0 0 L … (back view)"
+                className="font-mono text-xs"
+              />
+            </div>
+          </div>
+          {errors.svgPathFront?.message && (
+            <p className="text-xs text-destructive">{errors.svgPathFront.message}</p>
+          )}
+
+          <icon.Field label="Icon (optional)" />
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+            <Button type="submit" disabled={mutation.isPending || icon.uploading}>
+              {mutation.isPending ? <Spinner size="sm" label="" /> : editing ? "Save" : "Create"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// Dialog for creating / editing a MuscleGroup
+function GroupDialog({
+  open,
+  editing,
+  onClose,
+}: {
+  open: boolean;
+  editing: MuscleGroupResponse | null;
+  onClose: () => void;
+}) {
+  const icon = useIconUpload();
+  const qc = useQueryClient();
+  const [serverError, setServerError] = useState<string | null>(null);
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<GroupForm>({ resolver: zodResolver(groupSchema) });
+
+  React.useEffect(() => {
+    if (open) {
+      icon.reset(editing?.icon?.url ?? null);
+      reset({ name: editing?.name ?? "" });
+      setServerError(null);
+    }
+  }, [open, editing]);
+
+  const mutation = useMutation({
+    mutationFn: (data: GroupForm) => {
+      const payload: MuscleGroupRequest = { name: data.name, iconUploadToken: icon.token };
+      if (editing) return adminMuscleGroupApi.update(editing.id, payload);
+      return adminMuscleGroupApi.create(payload);
+    },
+    onSuccess: () => {
+      invalidateMuscles(qc);
+      onClose();
+    },
+    onError: (err) => setServerError(getErrorMessage(err)),
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>{editing ? "Edit Muscle Group" : "New Muscle Group"}</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit((d) => mutation.mutate(d))} className="space-y-4">
+          {serverError && <ApiError message={serverError} />}
+          <div className="space-y-1.5">
+            <Label>Name</Label>
+            <Input {...register("name")} placeholder="e.g. Chest" />
+            {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
+          </div>
+          <icon.Field />
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+            <Button type="submit" disabled={mutation.isPending || icon.uploading}>
+              {mutation.isPending ? <Spinner size="sm" label="" /> : editing ? "Save" : "Create"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// Main Muscles tab
+function MusclesTab() {
+  const qc = useQueryClient();
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["admin", "muscles"],
+    queryFn: adminMuscleGroupApi.list,
+  });
+
+  const [expanded, setExpanded] = useState<Set<number>>(new Set());
+  const [groupDialog, setGroupDialog] = useState<{ open: boolean; editing: MuscleGroupResponse | null }>({ open: false, editing: null });
+  const [subDialog, setSubDialog] = useState<{ open: boolean; groupId: number; editing: MuscleSubGroupResponse | null }>({ open: false, groupId: 0, editing: null });
+
+  const deleteGroup = useMutation({
+    mutationFn: adminMuscleGroupApi.delete,
+    onSuccess: () => invalidateMuscles(qc),
+  });
+
+  const deleteSubGroup = useMutation({
+    mutationFn: adminMuscleSubGroupApi.delete,
+    onSuccess: () => invalidateMuscles(qc),
+  });
+
+  const toggleExpand = (id: number) =>
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+
+  if (isLoading) return <PageSpinner />;
+  if (error) return <ApiError message={getErrorMessage(error)} />;
+
+  return (
+    <div className="space-y-3">
+      <div className="flex justify-end">
+        <Button size="sm" onClick={() => setGroupDialog({ open: true, editing: null })}>
+          <Plus className="h-4 w-4" /> New group
+        </Button>
+      </div>
+
+      {!data?.length && (
+        <p className="text-center text-muted-foreground text-sm py-8">No muscle groups yet.</p>
+      )}
+
+      {data?.map((group) => {
+        const isOpen = expanded.has(group.id);
+        return (
+          <div key={group.id} className="rounded-lg border border-border bg-card overflow-hidden">
+            {/* Group header row */}
+            <div className="flex items-center gap-3 px-4 py-3">
+              <button
+                type="button"
+                onClick={() => toggleExpand(group.id)}
+                className="text-muted-foreground hover:text-foreground transition-colors shrink-0"
+              >
+                {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+              </button>
+
+              {group.icon ? (
+                <img src={group.icon.url} alt={group.name} className="h-7 w-7 object-contain rounded shrink-0" />
+              ) : (
+                <Layers className="h-5 w-5 text-muted-foreground shrink-0" />
+              )}
+
+              <span className="font-semibold flex-1 truncate">{group.name}</span>
+              <span className="text-xs text-muted-foreground mr-2">
+                {group.subGroups.length} subgroup{group.subGroups.length !== 1 ? "s" : ""}
+              </span>
+
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-7 w-7 shrink-0"
+                onClick={() => setGroupDialog({ open: true, editing: group })}
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </Button>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-7 w-7 text-destructive hover:text-destructive shrink-0"
+                onClick={() => window.confirm(`Delete group "${group.name}" and all its subgroups?`) && deleteGroup.mutate(group.id)}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+
+            {/* Subgroups list (collapsible) */}
+            {isOpen && (
+              <div className="border-t border-border">
+                {group.subGroups.length === 0 && (
+                  <p className="text-xs text-muted-foreground px-10 py-2">No subgroups yet.</p>
+                )}
+                {group.subGroups.map((sub) => (
+                  <div key={sub.id} className="flex items-center gap-3 px-10 py-2.5 border-b border-border/50 last:border-b-0">
+                    {sub.icon ? (
+                      <img src={sub.icon.url} alt={sub.name} className="h-5 w-5 object-contain rounded shrink-0" />
+                    ) : (
+                      <Layers className="h-4 w-4 text-muted-foreground shrink-0" />
+                    )}
+                    <span className="flex-1 text-sm truncate">{sub.name}</span>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <PathBadge label="F" filled={!!sub.svgPathFront} />
+                      <PathBadge label="B" filled={!!sub.svgPathBack} />
+                    </div>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-6 w-6 shrink-0"
+                      onClick={() => setSubDialog({ open: true, groupId: group.id, editing: sub })}
+                    >
+                      <Pencil className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-6 w-6 text-destructive hover:text-destructive shrink-0"
+                      onClick={() => window.confirm(`Delete "${sub.name}"?`) && deleteSubGroup.mutate(sub.id)}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ))}
+
+                <div className="px-10 py-2.5">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-xs gap-1"
+                    onClick={() => setSubDialog({ open: true, groupId: group.id, editing: null })}
+                  >
+                    <Plus className="h-3 w-3" /> Add subgroup
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })}
+
+      <GroupDialog
+        open={groupDialog.open}
+        editing={groupDialog.editing}
+        onClose={() => setGroupDialog({ open: false, editing: null })}
+      />
+
+      <SubGroupDialog
+        open={subDialog.open}
+        groupId={subDialog.groupId}
+        editing={subDialog.editing}
+        onClose={() => setSubDialog({ open: false, groupId: 0, editing: null })}
+        onSuccess={() => setSubDialog({ open: false, groupId: 0, editing: null })}
+      />
+    </div>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export function AdminCatalogPage() {
@@ -495,7 +925,7 @@ export function AdminCatalogPage() {
     <div className="max-w-3xl mx-auto">
       <div className="mb-6 text-center">
         <h1 className="text-3xl font-bold">Catalog</h1>
-        <p className="text-muted-foreground mt-1">Manage activities, equipment and training goals</p>
+        <p className="text-muted-foreground mt-1">Manage activities, equipment, training goals and muscles</p>
       </div>
 
       <Tabs defaultValue="activities">
@@ -513,12 +943,17 @@ export function AdminCatalogPage() {
             <Target className="h-4 w-4" />
             Training Goals
           </TabsTrigger>
+          <TabsTrigger value="muscles" className="gap-1.5">
+            <Layers className="h-4 w-4" />
+            Muscles
+          </TabsTrigger>
         </TabsList>
         </div>
 
         <TabsContent value="activities"><ActivitiesTab /></TabsContent>
         <TabsContent value="equipment"><EquipmentTab /></TabsContent>
         <TabsContent value="goals"><TrainingGoalsTab /></TabsContent>
+        <TabsContent value="muscles"><MusclesTab /></TabsContent>
       </Tabs>
     </div>
   );
