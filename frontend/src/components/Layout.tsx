@@ -54,6 +54,7 @@ export function Layout() {
             {isAuthenticated && <NavItem to="/profile">My Profile</NavItem>}
             {isAdmin && (
               <>
+                <NavItem to="/catalog">Browse Catalog</NavItem>
                 <NavItem to="/admin/users">Users</NavItem>
                 <NavItem to="/admin/catalog">Catalog</NavItem>
               </>
@@ -131,6 +132,7 @@ export function Layout() {
           <NavItem to="/profile">My Profile</NavItem>
           {isAdmin && (
             <>
+              <NavItem to="/catalog">Browse Catalog</NavItem>
               <NavItem to="/admin/users">Users</NavItem>
               <NavItem to="/admin/catalog">Catalog</NavItem>
             </>

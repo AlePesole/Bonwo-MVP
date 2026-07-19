@@ -1,5 +1,10 @@
 import { api } from "@/lib/axios";
-import type { ActivityResponse, EquipmentResponse, TrainingGoalResponse } from "@/types/api";
+import type {
+  ActivityResponse,
+  EquipmentResponse,
+  MuscleGroupResponse,
+  TrainingGoalResponse,
+} from "@/types/api";
 
 export const catalogApi = {
   listActivities: () =>
@@ -10,4 +15,7 @@ export const catalogApi = {
 
   listTrainingGoals: () =>
     api.get<TrainingGoalResponse[]>("/catalog/training-goals").then((r) => r.data),
+
+  listMuscleGroups: () =>
+    api.get<MuscleGroupResponse[]>("/catalog/muscles").then((r) => r.data),
 };

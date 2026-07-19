@@ -1,5 +1,5 @@
 import { api } from "@/lib/axios";
-import type { ActivityResponse, EquipmentResponse, TrainingGoalResponse } from "@/types/api";
+import type { ActivityResponse, EquipmentResponse, MuscleGroupResponse, MuscleSubGroupResponse, TrainingGoalResponse } from "@/types/api";
 
 // ── Activities ────────────────────────────────────────────────────────────────
 
@@ -49,4 +49,47 @@ export const adminTrainingGoalApi = {
   update: (id: number, body: TrainingGoalRequest) =>
     api.put<TrainingGoalResponse>(`/catalog/training-goals/${id}`, body).then((r) => r.data),
   delete: (id: number) => api.delete(`/catalog/training-goals/${id}`),
+};
+
+// ── Muscle Groups ─────────────────────────────────────────────────────────────
+
+export interface MuscleGroupRequest {
+  name: string;
+  iconUploadToken?: string;
+}
+
+export const adminMuscleGroupApi = {
+  list: () => api.get<MuscleGroupResponse[]>("/catalog/muscles").then((r) => r.data),
+  create: (body: MuscleGroupRequest) =>
+    api.post<MuscleGroupResponse>("/catalog/muscles", body).then((r) => r.data),
+  update: (id: number, body: MuscleGroupRequest) =>
+    api.put<MuscleGroupResponse>(`/catalog/muscles/${id}`, body).then((r) => r.data),
+  delete: (id: number) => api.delete(`/catalog/muscles/${id}`),
+};
+
+// ── Muscle SubGroups ──────────────────────────────────────────────────────────
+
+export interface CreateMuscleSubGroupRequest {
+  groupId: number;
+  name: string;
+  detail?: string;
+  svgPathFront?: string;
+  svgPathBack?: string;
+  iconUploadToken?: string;
+}
+
+export interface UpdateMuscleSubGroupRequest {
+  name?: string;
+  detail?: string | null;
+  svgPathFront?: string | null;
+  svgPathBack?: string | null;
+  iconUploadToken?: string;
+}
+
+export const adminMuscleSubGroupApi = {
+  create: (body: CreateMuscleSubGroupRequest) =>
+    api.post<MuscleSubGroupResponse>("/catalog/muscles/sub-groups", body).then((r) => r.data),
+  update: (id: number, body: UpdateMuscleSubGroupRequest) =>
+    api.put<MuscleSubGroupResponse>(`/catalog/muscles/sub-groups/${id}`, body).then((r) => r.data),
+  delete: (id: number) => api.delete(`/catalog/muscles/sub-groups/${id}`),
 };
