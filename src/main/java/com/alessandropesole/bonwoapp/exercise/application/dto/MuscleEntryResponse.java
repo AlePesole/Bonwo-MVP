@@ -5,7 +5,7 @@ import com.alessandropesole.bonwoapp.exercise.domain.model.ActivationLevel;
 
 public record MuscleEntryResponse(
         Long subGroupId,
-        MuscleSubGroupResponse subGroup,     // resolved — null if deleted
+        MuscleSubGroupResponse subGroup,
         double activation,
-        ActivationLevel role                // PRIMARY / SECONDARY / STABILIZER
+        ActivationLevel role
 ) {}
