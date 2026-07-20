@@ -58,9 +58,7 @@ function useIconUpload() {
     try {
       const fd = new FormData();
       fd.append("file", file);
-      const { data } = await api.post<ImageUploadResponse>("/media/images/upload", fd, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      const { data } = await api.post<ImageUploadResponse>("/media/images/upload", fd);
       setToken(data.uploadToken);
     } catch (err) {
       setError(getErrorMessage(err));

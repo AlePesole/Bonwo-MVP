@@ -9,6 +9,8 @@ import { PublicProfilePage } from "@/profile/PublicProfilePage";
 import { AdminUsersPage } from "@/admin/AdminUsersPage";
 import { AdminCatalogPage } from "@/admin/AdminCatalogPage";
 import { CatalogPage } from "@/catalog/CatalogPage";
+import { LibraryPage } from "@/library/LibraryPage";
+import { WorkoutsPage } from "@/library/WorkoutsPage";
 
 export default function App() {
   return (
@@ -36,6 +38,23 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <MyProfilePage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/library"
+            element={
+              <ProtectedRoute>
+                <LibraryPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/library/workouts"
+            element={
+              <ProtectedRoute>
+                <WorkoutsPage />
               </ProtectedRoute>
             }
           />

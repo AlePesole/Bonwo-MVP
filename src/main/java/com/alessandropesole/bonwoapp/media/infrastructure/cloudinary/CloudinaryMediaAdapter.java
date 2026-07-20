@@ -1,13 +1,16 @@
 package com.alessandropesole.bonwoapp.media.infrastructure.cloudinary;
 
 import com.cloudinary.Cloudinary;
+import com.cloudinary.Transformation;
 import com.cloudinary.utils.ObjectUtils;
+import com.alessandropesole.bonwoapp.media.domain.exception.MediaUploadFailedException;
 import com.alessandropesole.bonwoapp.media.domain.port.out.MediaStoragePort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.Map;
 
 @Slf4j
@@ -24,7 +27,7 @@ public class CloudinaryMediaAdapter implements MediaStoragePort {
             Map<?, ?> result = cloudinary.uploader().upload(data, ObjectUtils.asMap(
                     "resource_type", "video",
                     "folder", "bonwoapp/videos/" + ownerId,
-                    "eager", "so_0",            // generate thumbnail at second 0
+                    "eager", Collections.singletonList(new Transformation().startOffset("0")),
                     "eager_async", false
             ));
 
@@ -33,7 +36,6 @@ public class CloudinaryMediaAdapter implements MediaStoragePort {
             Integer duration = result.get("duration") != null
                     ? ((Number) result.get("duration")).intValue() : null;
 
-            // Thumbnail URL: Cloudinary eager transformation
             String thumbnailUrl = null;
             if (result.get("eager") instanceof java.util.List<?> eager && !eager.isEmpty()) {
                 thumbnailUrl = (String) ((Map<?, ?>) eager.get(0)).get("secure_url");
@@ -42,8 +44,9 @@ public class CloudinaryMediaAdapter implements MediaStoragePort {
             log.info("Video uploaded to Cloudinary: externalId={}", externalId);
             return new UploadedVideo(externalId, url, thumbnailUrl, duration);
 
-        } catch (IOException e) {
-            throw new RuntimeException("Cloudinary video upload failed", e);
+        } catch (IOException | RuntimeException e) {
+            log.error("Cloudinary video upload failed", e);
+            throw new MediaUploadFailedException(cloudinaryErrorMessage(e));
         }
     }
 
@@ -62,9 +65,14 @@ public class CloudinaryMediaAdapter implements MediaStoragePort {
             log.info("Image uploaded to Cloudinary: externalId={}", externalId);
             return new UploadedImage(externalId, url);
 
-        } catch (IOException e) {
-            throw new RuntimeException("Cloudinary image upload failed", e);
+        } catch (IOException | RuntimeException e) {
+            log.error("Cloudinary image upload failed", e);
+            throw new MediaUploadFailedException(cloudinaryErrorMessage(e));
         }
+    }
+
+    private static String cloudinaryErrorMessage(Exception e) {
+        return e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
     }
 
     @Override

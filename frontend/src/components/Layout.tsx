@@ -52,6 +52,7 @@ export function Layout() {
           {/* Nav links — only shown when authenticated */}
           <nav className="hidden md:flex items-center gap-6">
             {isAuthenticated && <NavItem to="/profile">My Profile</NavItem>}
+            {isAuthenticated && <NavItem to="/library">Library</NavItem>}
             {isAdmin && (
               <>
                 <NavItem to="/catalog">Browse Catalog</NavItem>
@@ -130,6 +131,7 @@ export function Layout() {
       {isAuthenticated && (
         <div className="md:hidden border-b border-border/60 px-4 py-2 flex gap-4 bg-background/95">
           <NavItem to="/profile">My Profile</NavItem>
+          <NavItem to="/library">Library</NavItem>
           {isAdmin && (
             <>
               <NavItem to="/catalog">Browse Catalog</NavItem>
