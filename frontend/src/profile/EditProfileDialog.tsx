@@ -175,9 +175,7 @@ export function EditProfileDialog({ open, onClose, profile }: EditProfileDialogP
     try {
       const formData = new FormData();
       formData.append("file", file);
-      const { data } = await api.post<ImageUploadResponse>("/media/images/upload", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      const { data } = await api.post<ImageUploadResponse>("/media/images/upload", formData);
       setAvatarUploadToken(data.uploadToken);
     } catch (err) {
       setUploadError(getErrorMessage(err));

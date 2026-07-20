@@ -83,6 +83,80 @@ export interface MuscleGroupResponse {
   subGroups: MuscleSubGroupResponse[];
 }
 
+// ── Exercise ──────────────────────────────────────────────────────────────────
+
+export type Level = "BEGINNER" | "INTERMEDIATE" | "ADVANCED";
+export type ActivationLevel = "PRIMARY" | "SECONDARY" | "STABILIZER";
+
+export interface VideoResponse {
+  id: number;
+  url: string;
+  thumbnailUrl: string | null;
+  durationSeconds: number | null;
+  createdAt: string;
+}
+
+export interface MuscleEntryDto {
+  subGroupId: number;
+  activation: number;
+}
+
+export interface MuscleEntryResponse {
+  subGroupId: number;
+  subGroup: MuscleSubGroupResponse;
+  activation: number;
+  role: ActivationLevel;
+}
+
+export interface ExerciseResponse {
+  id: number;
+  ownerId: number;
+  title: string;
+  level: Level;
+  thumbnail: ImageResponse | null;
+  mainVideo: VideoResponse | null;
+  description: string | null;
+  instructions: string | null;
+  muscleSummary: Record<string, number>;
+  muscles: MuscleEntryResponse[];
+  equipment: EquipmentResponse[];
+  activities: ActivityResponse[];
+  trainingGoals: TrainingGoalResponse[];
+  createdAt: string;
+}
+
+// ── Library ───────────────────────────────────────────────────────────────────
+
+export type LibraryItemType =
+  | "EXERCISE"
+  | "ROUTINE"
+  | "PROGRAM"
+  | "PUBLICATION_EXERCISE"
+  | "PUBLICATION_ROUTINE"
+  | "PUBLICATION_PROGRAM";
+
+export interface LibraryFolderSummary {
+  id: number;
+  name: string;
+  defaultFolder: boolean;
+  itemCount: number;
+  createdAt: string;
+}
+
+export interface LibraryItemResponse {
+  referenceId: number;
+  type: LibraryItemType;
+  detail: ExerciseResponse | null;
+}
+
+export interface LibraryFolderDetail {
+  id: number;
+  name: string;
+  defaultFolder: boolean;
+  items: LibraryItemResponse[];
+  createdAt: string;
+}
+
 // ── User Profile ──────────────────────────────────────────────────────────────
 
 export interface UserProfileResponse {
