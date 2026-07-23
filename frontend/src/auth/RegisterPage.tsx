@@ -49,7 +49,7 @@ export function RegisterPage() {
     try {
       await registerUser(values);
       await login({ email: values.email, password: values.password });
-      navigate("/profile", { replace: true });
+      navigate("/library", { replace: true });
     } catch (err) {
       setServerError(getErrorMessage(err));
     }
@@ -57,7 +57,7 @@ export function RegisterPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <Card className="w-full max-w-md shadow-2xl border-border/50">
+      <Card className="w-full max-w-md shadow-2xl border-primary/40">
         <CardHeader className="space-y-1 text-center">
           <div className="flex justify-center mb-3">
             <img src="/bonwo-logo.png" alt="Bonwo" className="h-20 w-20" />

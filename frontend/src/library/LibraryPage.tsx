@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Dumbbell } from "lucide-react";
+import { Dumbbell, Layers } from "lucide-react";
 
 interface SectionCard {
   title: string;
@@ -10,10 +10,16 @@ interface SectionCard {
 
 const SECTIONS: SectionCard[] = [
   {
-    title: "My Workouts",
-    description: "Your exercises, routines and programs — organized and filterable.",
+    title: "My Exercises",
+    description: "Your exercises organized and filterable.",
     icon: <Dumbbell className="h-6 w-6" />,
     to: "/library/workouts",
+  },
+  {
+    title: "My Routines",
+    description: "Structured workout plans with exercises and sets.",
+    icon: <Layers className="h-6 w-6" />,
+    to: "/library/routines",
   },
 ];
 
@@ -30,7 +36,7 @@ export function LibraryPage() {
           <Link
             key={s.title}
             to={s.to}
-            className="rounded-xl border border-border bg-card p-5 hover:border-primary/60 hover:bg-card/80 transition-colors group"
+            className="rounded-xl border border-primary/40 bg-card p-5 hover:border-primary hover:bg-card/80 transition-colors group"
           >
             <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary mb-3 group-hover:bg-primary/20 transition-colors">
               {s.icon}

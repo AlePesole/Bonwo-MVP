@@ -22,7 +22,7 @@ export function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const from = (location.state as { from?: { pathname: string } })?.from?.pathname ?? "/profile";
+  const from = (location.state as { from?: { pathname: string } })?.from?.pathname ?? "/library";
 
   const [serverError, setServerError] = useState<string | null>(null);
 
@@ -44,7 +44,7 @@ export function LoginPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <Card className="w-full max-w-md shadow-2xl border-border/50">
+      <Card className="w-full max-w-md shadow-2xl border-primary/40">
         <CardHeader className="space-y-1 text-center">
           <div className="flex justify-center mb-3">
             <img src="/bonwo-logo.png" alt="Bonwo" className="h-20 w-20" />

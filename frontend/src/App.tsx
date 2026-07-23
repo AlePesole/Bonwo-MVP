@@ -11,6 +11,7 @@ import { AdminCatalogPage } from "@/admin/AdminCatalogPage";
 import { CatalogPage } from "@/catalog/CatalogPage";
 import { LibraryPage } from "@/library/LibraryPage";
 import { WorkoutsPage } from "@/library/WorkoutsPage";
+import { RoutinesPage } from "@/library/RoutinesPage";
 
 export default function App() {
   return (
@@ -22,7 +23,7 @@ export default function App() {
 
         {/* Main layout with navbar */}
         <Route element={<Layout />}>
-          <Route index element={<Navigate to="/profile" replace />} />
+          <Route index element={<Navigate to="/library" replace />} />
           <Route path="/users/:username" element={<PublicProfilePage />} />
           <Route
             path="/catalog"
@@ -58,6 +59,14 @@ export default function App() {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/library/routines"
+            element={
+              <ProtectedRoute>
+                <RoutinesPage />
+              </ProtectedRoute>
+            }
+          />
 
           <Route
             path="/admin/users"
@@ -78,7 +87,7 @@ export default function App() {
           />
         </Route>
 
-        <Route path="*" element={<Navigate to="/profile" replace />} />
+        <Route path="*" element={<Navigate to="/library" replace />} />
       </Routes>
     </AuthProvider>
   );

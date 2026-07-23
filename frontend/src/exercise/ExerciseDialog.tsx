@@ -35,13 +35,13 @@ const ROLE_LABEL: Record<ActivationRole, string> = {
 const ROLE_COLOR: Record<ActivationRole, string> = {
   PRIMARY: "text-red-400",
   SECONDARY: "text-orange-400",
-  STABILIZER: "text-yellow-400",
+  STABILIZER: "text-yellow-300",
 };
 
 const ROLE_TRACK_COLOR: Record<ActivationRole, string> = {
   PRIMARY: "#f87171",
   SECONDARY: "#fb923c",
-  STABILIZER: "#facc15",
+  STABILIZER: "#fde047",
 };
 
 // ── Level options ─────────────────────────────────────────────────────────────
@@ -358,7 +358,7 @@ function MusclesTabContent({
 
   if (pickerOpen) {
     return (
-      <div className="rounded-lg border border-border bg-card/50 p-4 min-h-[300px]">
+      <div className="rounded-lg border border-primary/40 bg-card/50 p-4 min-h-[300px]">
         <MusclePicker
           muscleGroups={muscleGroups}
           selectedIds={selectedIds}
@@ -370,7 +370,7 @@ function MusclesTabContent({
   }
 
   return (
-    <div className="rounded-lg border border-border bg-card/50 p-4 min-h-[220px] space-y-3">
+    <div className="rounded-lg border border-primary/40 bg-card/50 p-4 min-h-[220px] space-y-3">
       <div className="flex items-center justify-between">
         <p className="text-xs text-muted-foreground">
           {fields.length === 0
@@ -447,7 +447,7 @@ function DetailsTabContent({
   const current = open ? config.find((c) => c.key === open)! : null;
 
   return (
-    <div className="rounded-lg border border-border bg-card/50 p-4 min-h-[220px]">
+    <div className="rounded-lg border border-primary/40 bg-card/50 p-4 min-h-[220px]">
       {current ? (
         <div className="space-y-3">
           <button

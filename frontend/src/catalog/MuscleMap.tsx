@@ -21,7 +21,7 @@ function BodyPanel({
 }) {
   const { src, viewBox } = BODY_DIAGRAMS[view];
   const visible = subGroups.filter((s) =>
-    view === "front" ? s.svgPathFront !== null : s.svgPathBack !== null
+    view === "front" ? s.svgPathFront != null : s.svgPathBack != null
   );
 
   return (
@@ -29,7 +29,7 @@ function BodyPanel({
       <span className="text-xs font-medium text-muted-foreground uppercase tracking-widest">
         {view === "front" ? "Front" : "Back"}
       </span>
-      <div className="relative w-full rounded-xl bg-white/[0.06] p-3">
+      <div className="relative w-full rounded-xl bg-white/[0.06] border border-primary/40 p-3">
         <div className="relative">
           <img
             src={src}

@@ -125,7 +125,61 @@ export interface ExerciseResponse {
   createdAt: string;
 }
 
-// ── Library ───────────────────────────────────────────────────────────────────
+// ── Routine ───────────────────────────────────────────────────────────────────
+
+export type SetType = "REPS" | "TIMED" | "AMRAP" | "FAILURE";
+export type WeightMode = "TOTAL" | "PER_SIDE";
+
+export interface SetConfigDto {
+  type: SetType;
+  reps?: number;
+  weightKg?: number | null;
+  weightMode?: WeightMode;
+  duration?: string | null; // ISO 8601 e.g. "PT30S"
+}
+
+export interface SetConfigResponse {
+  type: SetType;
+  reps: number;
+  weightKg: number | null;
+  weightMode: WeightMode | null;
+  totalWeightKg: number | null;
+  duration: string | null;
+}
+
+export interface ExerciseSlotDto {
+  exerciseId: number;
+  position: number;
+  sets: SetConfigDto[];
+  restBetweenSets?: string | null;
+}
+
+export interface ExerciseSlotResponse {
+  exerciseId: number;
+  exercise: ExerciseResponse | null; // null if exercise was deleted
+  position: number;
+  sets: SetConfigResponse[];
+  restBetweenSets: string | null;
+}
+
+export interface RoutineResponse {
+  id: number;
+  ownerId: number;
+  title: string;
+  description: string | null;
+  level: Level;
+  thumbnail: ImageResponse | null;
+  estimatedDuration: string | null;
+  restBetweenExercises: string | null;
+  slots: ExerciseSlotResponse[];
+  muscleSummary: Record<string, number>;
+  equipment: EquipmentResponse[];
+  activities: ActivityResponse[];
+  trainingGoals: TrainingGoalResponse[];
+  createdAt: string;
+}
+
+
 
 export type LibraryItemType =
   | "EXERCISE"

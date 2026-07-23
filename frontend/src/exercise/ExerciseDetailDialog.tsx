@@ -27,7 +27,7 @@ const LEVEL_LABEL: Record<string, string> = {
 const ROLE_FILL: Record<ActivationLevel, string> = {
   PRIMARY: "#dc2626",
   SECONDARY: "#fb923c",
-  STABILIZER: "#facc15",
+  STABILIZER: "#fde047",
 };
 
 // ── Catalog icon item ─────────────────────────────────────────────────────────
@@ -118,7 +118,7 @@ function ExerciseBodyPanel({
       <span className="text-xs font-medium text-muted-foreground uppercase tracking-widest">
         {view === "front" ? "Front" : "Back"}
       </span>
-      <div className="relative w-full rounded-xl bg-white/[0.06] p-3">
+      <div className="relative w-full rounded-xl bg-white/[0.06] border border-primary/40 p-3">
         <div className="relative">
           <img src={src} alt={`Body ${view}`} className="w-full select-none pointer-events-none" />
           <svg viewBox={viewBox} className="absolute inset-0 h-full w-full" preserveAspectRatio="none">
@@ -189,7 +189,7 @@ function ExerciseMuscleMap({
                         className="h-3 w-3 rounded-full shrink-0"
                         style={{ backgroundColor: ROLE_FILL[role] }}
                       />
-                      <span className="text-foreground/80 text-xs">{sub?.name ?? `#${m.subGroupId}`}</span>
+                      <span className="text-foreground/80 text-xs">{sub?.name ?? "Unknown muscle (removed)"}</span>
                     </div>
                   );
                 })}
@@ -203,7 +203,7 @@ function ExerciseMuscleMap({
       </div>
 
       {/* Body diagrams */}
-      <div className="flex gap-3 flex-1 min-w-0">
+      <div className="flex gap-3 max-w-[480px]">
         <ExerciseBodyPanel view="front" muscles={muscles} subGroupMap={subGroupMap} />
         <ExerciseBodyPanel view="back" muscles={muscles} subGroupMap={subGroupMap} />
       </div>

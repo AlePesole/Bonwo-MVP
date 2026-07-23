@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { exerciseApi, type ExerciseFilter } from "@/exercise/api";
 import { catalogApi } from "@/catalog/api";
@@ -195,7 +195,7 @@ function FilterPanel({
     "flex h-8 w-full rounded-md border border-input bg-background px-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
 
   return (
-    <div className="rounded-xl border border-border bg-card p-4 space-y-4">
+    <div className="rounded-xl border border-primary/40 bg-card p-4 space-y-4">
       <div className="space-y-1.5">
         <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
           Muscle Group
@@ -447,6 +447,7 @@ function ExercisesTab() {
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export function WorkoutsPage() {
+  const navigate = useNavigate();
   return (
     <div className="max-w-5xl mx-auto">
       <Link
@@ -457,9 +458,9 @@ export function WorkoutsPage() {
       </Link>
 
       <div className="mb-6 text-center">
-        <h1 className="text-3xl font-bold">My Workouts</h1>
+        <h1 className="text-3xl font-bold">My Exercises</h1>
         <p className="text-muted-foreground mt-1">
-          Exercises · Routines (soon) · Programs (soon)
+          Exercises · Routines · Programs (soon)
         </p>
       </div>
 
@@ -469,7 +470,7 @@ export function WorkoutsPage() {
             <TabsTrigger value="exercises" className="gap-1.5">
               <Dumbbell className="h-4 w-4" /> Exercises
             </TabsTrigger>
-            <TabsTrigger value="routines" disabled className="gap-1.5 opacity-40">
+            <TabsTrigger value="routines" className="gap-1.5" onMouseDown={() => navigate("/library/routines")}>
               Routines
             </TabsTrigger>
             <TabsTrigger value="programs" disabled className="gap-1.5 opacity-40">
