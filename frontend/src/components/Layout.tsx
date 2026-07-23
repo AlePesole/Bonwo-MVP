@@ -51,15 +51,15 @@ export function Layout() {
 
           {/* Nav links — only shown when authenticated */}
           <nav className="hidden md:flex items-center gap-6">
-            {isAuthenticated && <NavItem to="/profile">My Profile</NavItem>}
             {isAuthenticated && <NavItem to="/library">Library</NavItem>}
             {isAdmin && (
               <>
                 <NavItem to="/catalog">Browse Catalog</NavItem>
-                <NavItem to="/admin/users">Users</NavItem>
                 <NavItem to="/admin/catalog">Catalog</NavItem>
+                <NavItem to="/admin/users">Users</NavItem>
               </>
             )}
+            {isAuthenticated && <NavItem to="/profile">My Profile</NavItem>}
           </nav>
 
           {/* Right side */}
@@ -130,21 +130,33 @@ export function Layout() {
       {/* Mobile nav — only for authenticated users */}
       {isAuthenticated && (
         <div className="md:hidden border-b border-border/60 px-4 py-2 flex gap-4 bg-background/95">
-          <NavItem to="/profile">My Profile</NavItem>
           <NavItem to="/library">Library</NavItem>
           {isAdmin && (
             <>
               <NavItem to="/catalog">Browse Catalog</NavItem>
-              <NavItem to="/admin/users">Users</NavItem>
               <NavItem to="/admin/catalog">Catalog</NavItem>
+              <NavItem to="/admin/users">Users</NavItem>
             </>
           )}
+          <NavItem to="/profile">My Profile</NavItem>
         </div>
       )}
 
       {/* Page content */}
-      <main className="container mx-auto px-4 py-8">
-        <Outlet />
+      <main className="container mx-auto px-4 py-8 relative">
+        {/* Full-width orange gradient touching the navbar — stays behind content */}
+        <div
+          className="absolute top-0 left-0 right-0 h-40 pointer-events-none -translate-y-0"
+          style={{
+            width: "100vw",
+            marginLeft: "calc(50% - 50vw)",
+            background: "linear-gradient(to bottom, rgba(255,106,0,0.28) 0%, transparent 100%)",
+            zIndex: 0,
+          }}
+        />
+        <div className="relative z-10">
+          <Outlet />
+        </div>
       </main>
     </div>
   );

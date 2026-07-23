@@ -115,7 +115,7 @@ function CatalogRow({
   FallbackIcon?: React.ElementType;
 }) {
   return (
-    <div className="flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-3">
+    <div className="flex items-center gap-3 rounded-lg border border-primary/40 bg-card px-4 py-3">
       <div className="h-9 w-9 rounded-md bg-muted flex items-center justify-center shrink-0">
         {icon?.url ? (
           <img src={icon.url} alt={name} className="h-7 w-7 object-contain" />
@@ -806,7 +806,7 @@ function MusclesTab() {
       {data?.map((group) => {
         const isOpen = expanded.has(group.id);
         return (
-          <div key={group.id} className="rounded-lg border border-border bg-card overflow-hidden">
+          <div key={group.id} className="rounded-lg border border-primary/40 bg-card overflow-hidden hover:border-primary transition-colors">
             {/* Group header row */}
             <div className="flex items-center gap-3 px-4 py-3">
               <button

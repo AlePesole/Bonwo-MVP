@@ -11,7 +11,7 @@ interface ProfileCardProps {
 
 function StatChip({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (
-    <div className="flex items-center gap-2 rounded-lg border bg-muted/40 px-3 py-2 text-sm">
+    <div className="flex items-center gap-2 rounded-lg border border-primary/40 bg-muted/40 px-3 py-2 text-sm">
       <span className="text-muted-foreground">{icon}</span>
       <div>
         <p className="text-xs text-muted-foreground">{label}</p>
@@ -23,7 +23,7 @@ function StatChip({ icon, label, value }: { icon: React.ReactNode; label: string
 
 function ActivityChip({ activity }: { activity: ActivityResponse }) {
   return (
-    <div className="inline-flex items-center gap-2 rounded-xl border border-border bg-muted/30 px-2.5 py-1.5 hover:bg-muted/60 transition-colors">
+    <div className="inline-flex items-center gap-2 rounded-xl border border-primary/40 bg-muted/30 px-2.5 py-1.5 hover:border-primary hover:bg-muted/60 transition-colors">
       {/* Icon */}
       <div className="h-7 w-7 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
         {activity.icon?.url ? (

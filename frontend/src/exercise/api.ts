@@ -2,6 +2,8 @@ import { api } from "@/lib/axios";
 import type { ExerciseResponse, PageResponse } from "@/types/api";
 
 export interface ExerciseFilter {
+  title?: string;
+  level?: string;
   muscleGroupId?: number;
   muscleSubGroupId?: number;
   equipmentIds?: number[];
@@ -23,6 +25,8 @@ export interface ExercisePayload {
 
 function buildParams(filter: ExerciseFilter, page: number, size: number): URLSearchParams {
   const p = new URLSearchParams();
+  if (filter.title) p.set("title", filter.title);
+  if (filter.level) p.set("level", filter.level);
   if (filter.muscleGroupId) p.set("muscleGroupId", String(filter.muscleGroupId));
   if (filter.muscleSubGroupId) p.set("muscleSubGroupId", String(filter.muscleSubGroupId));
   filter.equipmentIds?.forEach((id) => p.append("equipmentIds", String(id)));
