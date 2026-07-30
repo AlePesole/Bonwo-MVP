@@ -23,7 +23,7 @@ public final class RoutineMapper {
                 new LinkedHashSet<>(e.getEquipmentIds()),
                 new LinkedHashSet<>(e.getActivityIds()),
                 new LinkedHashSet<>(e.getTrainingGoalIds()),
-                e.getCreatedAt()
+                e.getCreatedAt(), e.getTrainingProgramId(), e.getPosition()
         );
     }
 
@@ -42,6 +42,8 @@ public final class RoutineMapper {
                 .activityIds(new ArrayList<>(r.getActivityIds()))
                 .trainingGoalIds(new ArrayList<>(r.getTrainingGoalIds()))
                 .createdAt(r.getCreatedAt())
+                .trainingProgramId(r.getTrainingProgramId())
+                .position(r.getPosition())
                 .build();
 
         var slots = r.getSlots().stream()

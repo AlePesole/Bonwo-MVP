@@ -9,6 +9,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
@@ -33,6 +34,13 @@ public class RoutineRepositoryAdapter implements RoutineRepository {
                                      Set<Long> trainingGoalIds, Pageable pageable) {
         var spec = RoutineSpecifications.matching(ownerId, equipmentIds, activityIds, trainingGoalIds);
         return jpa.findAll(spec, pageable).map(RoutineMapper::toDomain);
+    }
+
+    @Override
+    public List<Routine> findByTrainingProgramId(Long trainingProgramId) {
+        return jpa.findByTrainingProgramIdOrderByPositionAsc(trainingProgramId).stream()
+                .map(RoutineMapper::toDomain)
+                .toList();
     }
 
     @Override
