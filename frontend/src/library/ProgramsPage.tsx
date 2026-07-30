@@ -1,19 +1,18 @@
 import { useState, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { routineApi, displayDuration, type RoutineFilter } from "@/routine/api";
+import { programApi, type ProgramFilter } from "@/program/api";
 import { catalogApi } from "@/catalog/api";
-import { RoutineDialog } from "@/routine/RoutineDialog";
-import { RoutineDetailDialog } from "@/routine/RoutineDetailDialog";
-import { MuscleGroupFilterRow } from "@/library/MuscleGroupFilterRow";
+import { ProgramDialog } from "@/program/ProgramDialog";
+import { ProgramDetailDialog } from "@/program/ProgramDetailDialog";
 import { cn } from "@/lib/utils";
 import { getErrorMessage } from "@/lib/axios";
-import type { Level, MuscleGroupResponse, RoutineResponse } from "@/types/api";
+import type { Level, MuscleGroupResponse, TrainingProgramResponse } from "@/types/api";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { ApiError } from "@/components/ApiError";
 import { PageSpinner } from "@/components/Spinner";
-import { ChevronLeft, Clock, Dumbbell, Layers, Pencil, Plus, SlidersHorizontal, Trash2, X } from "lucide-react";
+import { CalendarDays, ChevronLeft, Dumbbell, Layers, Pencil, Plus, SlidersHorizontal, Trash2, X } from "lucide-react";
 
 // ── Level badge ───────────────────────────────────────────────────────────────
 
@@ -31,38 +30,41 @@ function LevelBadge({ level }: { level: Level }) {
   );
 }
 
-// ── Routine card ──────────────────────────────────────────────────────────────
+// ── Program card ──────────────────────────────────────────────────────────────
 
-function RoutineCard({
-  routine,
+function ProgramCard({
+  program,
   muscleGroupMap,
   onView,
   onEdit,
   onDelete,
 }: {
-  routine: RoutineResponse;
+  program: TrainingProgramResponse;
   muscleGroupMap: Map<number, MuscleGroupResponse>;
   onView: () => void;
   onEdit: () => void;
   onDelete: () => void;
 }) {
+  // Primary muscle groups from all routines' slots
   const primaryGroups = useMemo(() => {
     const seen = new Set<number>();
     const groups: MuscleGroupResponse[] = [];
-    for (const slot of routine.slots) {
-      if (!slot.exercise) continue;
-      for (const m of slot.exercise.muscles) {
-        if (m.role === "PRIMARY") {
-          const g = muscleGroupMap.get(m.subGroup.groupId);
-          if (g && !seen.has(g.id)) {
-            seen.add(g.id);
-            groups.push(g);
+    for (const routine of program.routines) {
+      for (const slot of routine.slots) {
+        if (!slot.exercise) continue;
+        for (const m of slot.exercise.muscles) {
+          if (m.role === "PRIMARY") {
+            const g = muscleGroupMap.get(m.subGroup.groupId);
+            if (g && !seen.has(g.id)) {
+              seen.add(g.id);
+              groups.push(g);
+            }
           }
         }
       }
     }
     return groups.slice(0, 3);
-  }, [routine.slots, muscleGroupMap]);
+  }, [program.routines, muscleGroupMap]);
 
   return (
     <div className="group rounded-xl border border-primary/40 bg-card overflow-hidden hover:border-primary transition-colors">
@@ -71,10 +73,10 @@ function RoutineCard({
         className="relative aspect-square bg-muted flex items-center justify-center overflow-hidden cursor-pointer"
         onClick={onView}
       >
-        {routine.thumbnail?.url ? (
-          <img src={routine.thumbnail.url} alt={routine.title} className="w-full h-full object-cover" />
+        {program.thumbnail?.url ? (
+          <img src={program.thumbnail.url} alt={program.title} className="w-full h-full object-cover" />
         ) : (
-          <Layers className="h-8 w-8 text-muted-foreground/30" />
+          <CalendarDays className="h-8 w-8 text-muted-foreground/30" />
         )}
 
         {/* Primary muscle icons — top left */}
@@ -92,7 +94,7 @@ function RoutineCard({
 
         {/* Level badge — bottom right */}
         <div className="absolute bottom-2 right-2">
-          <LevelBadge level={routine.level} />
+          <LevelBadge level={program.level} />
         </div>
       </div>
 
@@ -103,7 +105,7 @@ function RoutineCard({
             className="font-semibold text-sm leading-tight line-clamp-2 flex-1 cursor-pointer hover:text-primary transition-colors"
             onClick={onView}
           >
-            {routine.title}
+            {program.title}
           </h3>
           <div className="flex gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
             <button onClick={onEdit} className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors">
@@ -116,13 +118,11 @@ function RoutineCard({
         </div>
 
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <span>{routine.slots.length} exercises</span>
-          {routine.estimatedDuration && (
-            <>
-              <span>·</span>
-              <span className="flex items-center gap-0.5"><Clock className="h-3 w-3" />{displayDuration(routine.estimatedDuration)}</span>
-            </>
-          )}
+          <span>{program.routines.length} routine{program.routines.length !== 1 ? "s" : ""}</span>
+          <span>·</span>
+          <span className="flex items-center gap-0.5">
+            <CalendarDays className="h-3 w-3" />{program.daysPerWeek}d/week
+          </span>
         </div>
       </div>
     </div>
@@ -131,7 +131,7 @@ function RoutineCard({
 
 // ── Filter panel ──────────────────────────────────────────────────────────────
 
-function FilterPanel({ filter, onChange }: { filter: RoutineFilter; onChange: (f: RoutineFilter) => void }) {
+function FilterPanel({ filter, onChange }: { filter: ProgramFilter; onChange: (f: ProgramFilter) => void }) {
   const { data: equipment = [] } = useQuery({ queryKey: ["catalog", "equipment"], queryFn: catalogApi.listEquipment, staleTime: 60_000 });
   const { data: activities = [] } = useQuery({ queryKey: ["catalog", "activities"], queryFn: catalogApi.listActivities, staleTime: 60_000 });
   const { data: trainingGoals = [] } = useQuery({ queryKey: ["catalog", "training-goals"], queryFn: catalogApi.listTrainingGoals, staleTime: 60_000 });
@@ -143,42 +143,61 @@ function FilterPanel({ filter, onChange }: { filter: RoutineFilter; onChange: (f
 
   const chipClass = (active: boolean) => cn(
     "px-2.5 py-1 rounded-full text-xs border transition-colors",
-    active ? "border-primary bg-primary/10 text-primary" : "border-border hover:border-primary/40 text-muted-foreground"
+    active ? "bg-primary/10 border-primary text-primary" : "border-border text-muted-foreground hover:border-primary/50"
   );
 
   return (
-    <div className="rounded-xl border border-primary/40 bg-card p-4 space-y-4">
-      {([
-        { label: "Equipment", field: "equipmentIds" as const, items: equipment },
-        { label: "Activities", field: "activityIds" as const, items: activities },
-        { label: "Training Goals", field: "trainingGoalIds" as const, items: trainingGoals },
-      ]).map(({ label, field, items }) => (
-        <div key={field} className="space-y-1.5">
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{label}</p>
+    <div className="rounded-xl border border-primary/40 bg-card/50 p-4 space-y-3 mb-4">
+      {equipment.length > 0 && (
+        <div className="space-y-1.5">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Equipment</p>
           <div className="flex flex-wrap gap-1.5">
-            {items.map((item) => (
-              <button key={item.id} type="button" onClick={() => toggle(field, item.id)} className={chipClass((filter[field] ?? []).includes(item.id))}>
-                {item.name}
+            {equipment.map((e) => (
+              <button key={e.id} onClick={() => toggle("equipmentIds", e.id)} className={chipClass((filter.equipmentIds ?? []).includes(e.id))}>
+                {e.name}
               </button>
             ))}
-            {items.length === 0 && <span className="text-xs text-muted-foreground italic">No items</span>}
           </div>
         </div>
-      ))}
+      )}
+      {activities.length > 0 && (
+        <div className="space-y-1.5">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Activities</p>
+          <div className="flex flex-wrap gap-1.5">
+            {activities.map((a) => (
+              <button key={a.id} onClick={() => toggle("activityIds", a.id)} className={chipClass((filter.activityIds ?? []).includes(a.id))}>
+                {a.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      {trainingGoals.length > 0 && (
+        <div className="space-y-1.5">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Training Goals</p>
+          <div className="flex flex-wrap gap-1.5">
+            {trainingGoals.map((g) => (
+              <button key={g.id} onClick={() => toggle("trainingGoalIds", g.id)} className={chipClass((filter.trainingGoalIds ?? []).includes(g.id))}>
+                {g.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-// ── Routines tab ──────────────────────────────────────────────────────────────
+// ── Programs tab ──────────────────────────────────────────────────────────────
 
-function RoutinesTab() {
+function ProgramsTab() {
   const qc = useQueryClient();
-  const [filter, setFilter] = useState<RoutineFilter>({});
+  const [filter, setFilter] = useState<ProgramFilter>({});
   const [page, setPage] = useState(0);
   const [filterOpen, setFilterOpen] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editing, setEditing] = useState<RoutineResponse | null>(null);
-  const [detailRoutine, setDetailRoutine] = useState<RoutineResponse | null>(null);
+  const [editing, setEditing] = useState<TrainingProgramResponse | null>(null);
+  const [detailProgram, setDetailProgram] = useState<TrainingProgramResponse | null>(null);
 
   const { data: muscleGroups = [] } = useQuery({
     queryKey: ["catalog", "muscles"],
@@ -188,111 +207,51 @@ function RoutinesTab() {
 
   const muscleGroupMap = useMemo(() => new Map(muscleGroups.map((g) => [g.id, g])), [muscleGroups]);
 
-  const muscleIds = filter.muscleGroupIds ?? [];
-  const subIds = filter.muscleSubGroupIds ?? [];
-  const panelFilters =
+  const handleFilterChange = (f: ProgramFilter) => { setFilter(f); setPage(0); };
+
+  const activeFilters =
     (filter.equipmentIds?.length ?? 0) +
     (filter.activityIds?.length ?? 0) +
     (filter.trainingGoalIds?.length ?? 0);
-  const hasAnyFilter = panelFilters > 0 || muscleIds.length > 0 || subIds.length > 0;
 
-  // Don't send muscle ids to the API (backend has no muscle filter for routines)
   const { data, isLoading, error } = useQuery({
-    queryKey: ["routines", { equipmentIds: filter.equipmentIds, activityIds: filter.activityIds, trainingGoalIds: filter.trainingGoalIds }, page],
-    queryFn: () =>
-      routineApi.list(
-        {
-          equipmentIds: filter.equipmentIds,
-          activityIds: filter.activityIds,
-          trainingGoalIds: filter.trainingGoalIds,
-        },
-        page
-      ),
+    queryKey: ["programs", filter, page],
+    queryFn: () => programApi.list(filter, page),
   });
-
-  const routines = useMemo(() => {
-    const list = data?.content ?? [];
-    if (subIds.length > 0) {
-      return list.filter((r) =>
-        r.slots.some(
-          (slot) =>
-            slot.exercise != null &&
-            slot.exercise.muscles.some((m) => subIds.includes(m.subGroupId))
-        )
-      );
-    }
-    if (muscleIds.length === 0) return list;
-    return list.filter((r) =>
-      muscleIds.some((id) => {
-        const score = r.muscleSummary[String(id)];
-        return score != null && score > 0;
-      })
-    );
-  }, [data?.content, muscleIds, subIds]);
 
   const deleteMutation = useMutation({
-    mutationFn: routineApi.delete,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["routines"] }),
+    mutationFn: programApi.delete,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["programs"] }),
   });
-
-  const handleFilterChange = (f: RoutineFilter) => { setFilter(f); setPage(0); };
-
-  const setMuscleGroupIds = (ids: number[]) => {
-    setFilter((prev) => {
-      const allowed = new Set(
-        muscleGroups
-          .filter((g) => ids.includes(g.id))
-          .flatMap((g) => g.subGroups.map((s) => s.id))
-      );
-      const nextSubs = (prev.muscleSubGroupIds ?? []).filter((sid) => allowed.has(sid));
-      return {
-        ...prev,
-        muscleGroupIds: ids.length ? ids : undefined,
-        muscleSubGroupIds: nextSubs.length ? nextSubs : undefined,
-      };
-    });
-    setPage(0);
-  };
-
-  const setMuscleSubGroupIds = (ids: number[]) => {
-    setFilter((prev) => ({
-      ...prev,
-      muscleSubGroupIds: ids.length ? ids : undefined,
-    }));
-    setPage(0);
-  };
 
   return (
     <div className="space-y-4">
       {/* Toolbar */}
-      <div className="flex items-center gap-2">
-        <Button variant={filterOpen ? "default" : "outline"} size="sm" className="gap-1.5" onClick={() => setFilterOpen((v) => !v)}>
-          <SlidersHorizontal className="h-4 w-4" />
+      <div className="flex items-center gap-2 flex-wrap">
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-1.5"
+          onClick={() => setFilterOpen((v) => !v)}
+        >
+          <SlidersHorizontal className="h-3.5 w-3.5" />
           Filters
-          {panelFilters > 0 && (
+          {activeFilters > 0 && (
             <span className="ml-0.5 bg-primary-foreground text-primary rounded-full text-[10px] font-bold w-4 h-4 flex items-center justify-center">
-              {panelFilters}
+              {activeFilters}
             </span>
           )}
         </Button>
-        {hasAnyFilter && (
+        {activeFilters > 0 && (
           <Button variant="ghost" size="sm" className="gap-1 text-muted-foreground" onClick={() => { setFilter({}); setPage(0); }}>
             <X className="h-3.5 w-3.5" /> Clear
           </Button>
         )}
         <div className="flex-1" />
         <Button size="sm" className="gap-1.5" onClick={() => { setEditing(null); setDialogOpen(true); }}>
-          <Plus className="h-4 w-4" /> New Routine
+          <Plus className="h-4 w-4" /> New Program
         </Button>
       </div>
-
-      <MuscleGroupFilterRow
-        muscleGroups={muscleGroups}
-        selectedGroupIds={muscleIds}
-        selectedSubGroupIds={subIds}
-        onGroupChange={setMuscleGroupIds}
-        onSubGroupChange={setMuscleSubGroupIds}
-      />
 
       {filterOpen && <FilterPanel filter={filter} onChange={handleFilterChange} />}
 
@@ -302,31 +261,26 @@ function RoutinesTab() {
         <ApiError message={getErrorMessage(error)} />
       ) : (
         <>
-          {!routines.length ? (
+          {!data?.content.length ? (
             <div className="text-center py-16 text-muted-foreground">
-              <Layers className="h-10 w-10 mx-auto mb-3 opacity-30" />
-              <p className="text-sm">
-                {hasAnyFilter
-                  ? "No routines match the current filters."
-                  : "No routines yet. Create your first one!"}
-              </p>
+              <CalendarDays className="h-10 w-10 mx-auto mb-3 opacity-30" />
+              <p className="text-sm">No programs yet. Create your first one!</p>
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-              {routines.map((routine) => (
-                <RoutineCard
-                  key={routine.id}
-                  routine={routine}
+              {data.content.map((program) => (
+                <ProgramCard
+                  key={program.id}
+                  program={program}
                   muscleGroupMap={muscleGroupMap}
-                  onView={() => setDetailRoutine(routine)}
-                  onEdit={() => { setEditing(routine); setDialogOpen(true); }}
-                  onDelete={() => window.confirm(`Delete "${routine.title}"?`) && deleteMutation.mutate(routine.id)}
+                  onView={() => setDetailProgram(program)}
+                  onEdit={() => { setEditing(program); setDialogOpen(true); }}
+                  onDelete={() => window.confirm(`Delete "${program.title}"?`) && deleteMutation.mutate(program.id)}
                 />
               ))}
             </div>
           )}
 
-          {/* Pagination */}
           {data && data.totalPages > 1 && (
             <div className="flex justify-center gap-2 mt-2">
               <Button variant="outline" size="sm" disabled={data.first} onClick={() => setPage((p) => p - 1)}>Previous</Button>
@@ -337,16 +291,17 @@ function RoutinesTab() {
         </>
       )}
 
-      <RoutineDialog open={dialogOpen} editing={editing} onClose={() => setDialogOpen(false)} />
-      <RoutineDetailDialog routine={detailRoutine} onClose={() => setDetailRoutine(null)} />
+      <ProgramDialog open={dialogOpen} editing={editing} onClose={() => setDialogOpen(false)} />
+      <ProgramDetailDialog program={detailProgram} onClose={() => setDetailProgram(null)} />
     </div>
   );
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
-export function RoutinesPage() {
+export default function ProgramsPage() {
   const navigate = useNavigate();
+
   return (
     <div className="max-w-5xl mx-auto">
       <Link
@@ -357,28 +312,28 @@ export function RoutinesPage() {
       </Link>
 
       <div className="mb-6 text-center">
-        <h1 className="text-3xl font-bold">My Routines</h1>
+        <h1 className="text-3xl font-bold">My Programs</h1>
         <p className="text-muted-foreground mt-1">
           Exercises · Routines · Programs
         </p>
       </div>
 
-      <Tabs defaultValue="routines">
+      <Tabs defaultValue="programs">
         <div className="flex justify-center mb-6">
           <TabsList>
             <TabsTrigger value="exercises" className="gap-1.5" onMouseDown={() => navigate("/library/workouts")}>
               Exercises
             </TabsTrigger>
-            <TabsTrigger value="routines" className="gap-1.5">
+            <TabsTrigger value="routines" className="gap-1.5" onMouseDown={() => navigate("/library/routines")}>
               Routines
             </TabsTrigger>
-            <TabsTrigger value="programs" className="gap-1.5" onMouseDown={() => navigate("/library/programs")}>
+            <TabsTrigger value="programs" className="gap-1.5">
               Programs
             </TabsTrigger>
           </TabsList>
         </div>
-        <TabsContent value="routines" className="mt-6">
-          <RoutinesTab />
+        <TabsContent value="programs" className="mt-6">
+          <ProgramsTab />
         </TabsContent>
       </Tabs>
     </div>

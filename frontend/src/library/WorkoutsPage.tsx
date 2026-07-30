@@ -5,6 +5,7 @@ import { exerciseApi, type ExerciseFilter } from "@/exercise/api";
 import { catalogApi } from "@/catalog/api";
 import { ExerciseDialog } from "@/exercise/ExerciseDialog";
 import { ExerciseDetailDialog } from "@/exercise/ExerciseDetailDialog";
+import { MuscleGroupFilterRow } from "@/library/MuscleGroupFilterRow";
 import { cn } from "@/lib/utils";
 import { getErrorMessage } from "@/lib/axios";
 import type { ExerciseResponse, Level, MuscleGroupResponse } from "@/types/api";
@@ -17,9 +18,9 @@ import { ChevronLeft, Dumbbell, Pencil, Plus, SlidersHorizontal, Trash2, X } fro
 // ── Level badge ───────────────────────────────────────────────────────────────
 
 const LEVEL_COLOR: Record<Level, string> = {
-  BEGINNER: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
-  INTERMEDIATE: "bg-amber-500/20 text-amber-400 border-amber-500/30",
-  ADVANCED: "bg-red-500/20 text-red-400 border-red-500/30",
+  BEGINNER: "text-emerald-400 border-emerald-500/50",
+  INTERMEDIATE: "text-amber-400 border-amber-500/50",
+  ADVANCED: "text-red-400 border-red-500/50",
 };
 
 const LEVEL_LABEL: Record<Level, string> = {
@@ -32,7 +33,7 @@ function LevelBadge({ level }: { level: Level }) {
   return (
     <span
       className={cn(
-        "text-[10px] font-semibold px-2 py-0.5 rounded-full border",
+        "text-[10px] font-semibold px-2 py-0.5 rounded-full border-2 bg-zinc-800/90",
         LEVEL_COLOR[level]
       )}
     >
@@ -75,7 +76,7 @@ function ExerciseCard({
     <div className="group rounded-xl border border-primary/40 bg-card overflow-hidden hover:border-primary transition-colors">
       {/* Thumbnail with overlays — click to view detail */}
       <div
-        className="relative aspect-video bg-muted flex items-center justify-center overflow-hidden cursor-pointer"
+        className="relative aspect-square bg-muted flex items-center justify-center overflow-hidden cursor-pointer"
         onClick={onView}
       >
         {exercise.thumbnail ? (
@@ -90,7 +91,7 @@ function ExerciseCard({
 
         {/* Primary muscle group icons — top left */}
         {primaryGroups.length > 0 && (
-          <div className="absolute top-2 left-2 flex items-center gap-1">
+          <div className="absolute top-2 left-2 flex flex-col items-center gap-1">
             {primaryGroups.map((g) =>
               g.icon?.url ? (
                 <img
@@ -159,11 +160,6 @@ function FilterPanel({
   filter: ExerciseFilter;
   onChange: (f: ExerciseFilter) => void;
 }) {
-  const { data: muscleGroups = [] } = useQuery({
-    queryKey: ["catalog", "muscles"],
-    queryFn: catalogApi.listMuscleGroups,
-    staleTime: 60_000,
-  });
   const { data: equipment = [] } = useQuery({
     queryKey: ["catalog", "equipment"],
     queryFn: catalogApi.listEquipment,
@@ -191,63 +187,8 @@ function FilterPanel({
     });
   };
 
-  const selectClass =
-    "flex h-8 w-full rounded-md border border-input bg-background px-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
-
   return (
     <div className="rounded-xl border border-primary/40 bg-card p-4 space-y-4">
-      <div className="space-y-1.5">
-        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-          Muscle Group
-        </p>
-        <select
-          className={selectClass}
-          value={filter.muscleGroupId ?? ""}
-          onChange={(e) =>
-            onChange({
-              ...filter,
-              muscleGroupId: e.target.value ? Number(e.target.value) : undefined,
-              muscleSubGroupId: undefined,
-            })
-          }
-        >
-          <option value="">All muscles</option>
-          {muscleGroups.map((g) => (
-            <option key={g.id} value={g.id}>
-              {g.name}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {/* Subgroup selector — only when a group is selected */}
-      {filter.muscleGroupId && (() => {
-        const subGroups = muscleGroups.find((g) => g.id === filter.muscleGroupId)?.subGroups ?? [];
-        if (subGroups.length === 0) return null;
-        return (
-          <div className="space-y-1.5">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-              Muscle Subgroup
-            </p>
-            <select
-              className={selectClass}
-              value={filter.muscleSubGroupId ?? ""}
-              onChange={(e) =>
-                onChange({
-                  ...filter,
-                  muscleSubGroupId: e.target.value ? Number(e.target.value) : undefined,
-                })
-              }
-            >
-              <option value="">All subgroups</option>
-              {subGroups.map((s) => (
-                <option key={s.id} value={s.id}>{s.name}</option>
-              ))}
-            </select>
-          </div>
-        );
-      })()}
-
       {(
         [
           { label: "Equipment", field: "equipmentIds", items: equipment },
@@ -297,12 +238,13 @@ function ExercisesTab() {
     staleTime: 60_000,
   });
 
-  const activeFilters =
-    (filter.muscleGroupId ? 1 : 0) +
-    (filter.muscleSubGroupId ? 1 : 0) +
+  const muscleIds = filter.muscleGroupIds ?? [];
+  const subIds = filter.muscleSubGroupIds ?? [];
+  const panelFilters =
     (filter.equipmentIds?.length ?? 0) +
     (filter.activityIds?.length ?? 0) +
     (filter.trainingGoalIds?.length ?? 0);
+  const hasAnyFilter = panelFilters > 0 || muscleIds.length > 0 || subIds.length > 0;
 
   const muscleGroupMap = useMemo(
     () => new Map(muscleGroups.map((g) => [g.id, g])),
@@ -314,6 +256,23 @@ function ExercisesTab() {
     queryFn: () => exerciseApi.list(filter, page),
   });
 
+  // Client-side filter when multi-select exceeds what the backend supports (single id).
+  const exercises = useMemo(() => {
+    const list = data?.content ?? [];
+    if (subIds.length > 1) {
+      return list.filter((ex) =>
+        ex.muscles.some((m) => subIds.includes(m.subGroupId))
+      );
+    }
+    if (subIds.length === 1) return list; // already filtered by API
+    if (muscleIds.length > 1) {
+      return list.filter((ex) =>
+        ex.muscles.some((m) => muscleIds.includes(m.subGroup.groupId))
+      );
+    }
+    return list;
+  }, [data?.content, muscleIds, subIds]);
+
   const deleteMutation = useMutation({
     mutationFn: exerciseApi.delete,
     onSuccess: () => qc.invalidateQueries({ queryKey: ["exercises"] }),
@@ -321,6 +280,31 @@ function ExercisesTab() {
 
   const handleFilterChange = (f: ExerciseFilter) => {
     setFilter(f);
+    setPage(0);
+  };
+
+  const setMuscleGroupIds = (ids: number[]) => {
+    setFilter((prev) => {
+      const allowed = new Set(
+        muscleGroups
+          .filter((g) => ids.includes(g.id))
+          .flatMap((g) => g.subGroups.map((s) => s.id))
+      );
+      const nextSubs = (prev.muscleSubGroupIds ?? []).filter((sid) => allowed.has(sid));
+      return {
+        ...prev,
+        muscleGroupIds: ids.length ? ids : undefined,
+        muscleSubGroupIds: nextSubs.length ? nextSubs : undefined,
+      };
+    });
+    setPage(0);
+  };
+
+  const setMuscleSubGroupIds = (ids: number[]) => {
+    setFilter((prev) => ({
+      ...prev,
+      muscleSubGroupIds: ids.length ? ids : undefined,
+    }));
     setPage(0);
   };
 
@@ -336,14 +320,14 @@ function ExercisesTab() {
         >
           <SlidersHorizontal className="h-4 w-4" />
           Filters
-          {activeFilters > 0 && (
+          {panelFilters > 0 && (
             <span className="ml-0.5 bg-primary-foreground text-primary rounded-full text-[10px] font-bold w-4 h-4 flex items-center justify-center">
-              {activeFilters}
+              {panelFilters}
             </span>
           )}
         </Button>
 
-        {activeFilters > 0 && (
+        {hasAnyFilter && (
           <Button
             variant="ghost"
             size="sm"
@@ -365,6 +349,14 @@ function ExercisesTab() {
         </Button>
       </div>
 
+      <MuscleGroupFilterRow
+        muscleGroups={muscleGroups}
+        selectedGroupIds={muscleIds}
+        selectedSubGroupIds={subIds}
+        onGroupChange={setMuscleGroupIds}
+        onSubGroupChange={setMuscleSubGroupIds}
+      />
+
       {filterOpen && <FilterPanel filter={filter} onChange={handleFilterChange} />}
 
       {isLoading && <PageSpinner />}
@@ -372,23 +364,23 @@ function ExercisesTab() {
 
       {!isLoading && !error && (
         <>
-          {data?.content.length === 0 ? (
+          {exercises.length === 0 ? (
             <div className="text-center py-16 space-y-3">
               <Dumbbell className="h-10 w-10 text-muted-foreground/30 mx-auto" />
               <p className="text-muted-foreground">
-                {activeFilters > 0
+                {hasAnyFilter
                   ? "No exercises match the current filters."
                   : "No exercises yet. Create your first one!"}
               </p>
-              {activeFilters === 0 && (
+              {!hasAnyFilter && (
                 <Button size="sm" onClick={() => { setEditing(null); setDialogOpen(true); }}>
                   <Plus className="h-4 w-4" /> New exercise
                 </Button>
               )}
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {data?.content.map((exercise) => (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+              {exercises.map((exercise) => (
                 <ExerciseCard
                   key={exercise.id}
                   exercise={exercise}
@@ -460,7 +452,7 @@ export function WorkoutsPage() {
       <div className="mb-6 text-center">
         <h1 className="text-3xl font-bold">My Exercises</h1>
         <p className="text-muted-foreground mt-1">
-          Exercises · Routines · Programs (soon)
+          Exercises · Routines · Programs
         </p>
       </div>
 
@@ -473,7 +465,7 @@ export function WorkoutsPage() {
             <TabsTrigger value="routines" className="gap-1.5" onMouseDown={() => navigate("/library/routines")}>
               Routines
             </TabsTrigger>
-            <TabsTrigger value="programs" disabled className="gap-1.5 opacity-40">
+            <TabsTrigger value="programs" className="gap-1.5" onMouseDown={() => navigate("/library/programs")}>
               Programs
             </TabsTrigger>
           </TabsList>

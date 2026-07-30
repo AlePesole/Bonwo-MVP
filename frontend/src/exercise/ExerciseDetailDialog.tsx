@@ -258,10 +258,11 @@ function MediaBlock({ exercise }: { exercise: ExerciseResponse }) {
     );
   }
 
+  // Square thumbnail — same height as aspect-video, aligned to the right (against catalog)
   return (
-    <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-muted flex items-center justify-center border border-primary/50">
+    <div className="w-[56.25%] aspect-square ml-auto rounded-xl overflow-hidden bg-muted flex items-center justify-center border border-primary/50">
       {exercise.thumbnail?.url ? (
-        <img src={exercise.thumbnail.url} alt={exercise.title} className="w-full h-full object-cover" />
+        <img src={exercise.thumbnail.url} alt={exercise.title} className="h-full w-full object-cover" />
       ) : (
         <Dumbbell className="h-12 w-12 text-muted-foreground/30" />
       )}

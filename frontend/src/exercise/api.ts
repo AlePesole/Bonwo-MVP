@@ -4,8 +4,8 @@ import type { ExerciseResponse, PageResponse } from "@/types/api";
 export interface ExerciseFilter {
   title?: string;
   level?: string;
-  muscleGroupId?: number;
-  muscleSubGroupId?: number;
+  muscleGroupIds?: number[];
+  muscleSubGroupIds?: number[];
   equipmentIds?: number[];
   activityIds?: number[];
   trainingGoalIds?: number[];
@@ -27,8 +27,13 @@ function buildParams(filter: ExerciseFilter, page: number, size: number): URLSea
   const p = new URLSearchParams();
   if (filter.title) p.set("title", filter.title);
   if (filter.level) p.set("level", filter.level);
-  if (filter.muscleGroupId) p.set("muscleGroupId", String(filter.muscleGroupId));
-  if (filter.muscleSubGroupId) p.set("muscleSubGroupId", String(filter.muscleSubGroupId));
+  // Backend only accepts a single muscleGroupId / muscleSubGroupId.
+  // Multiple selections are filtered client-side.
+  if (filter.muscleSubGroupIds?.length === 1) {
+    p.set("muscleSubGroupId", String(filter.muscleSubGroupIds[0]));
+  } else if (filter.muscleGroupIds?.length === 1 && !filter.muscleSubGroupIds?.length) {
+    p.set("muscleGroupId", String(filter.muscleGroupIds[0]));
+  }
   filter.equipmentIds?.forEach((id) => p.append("equipmentIds", String(id)));
   filter.activityIds?.forEach((id) => p.append("activityIds", String(id)));
   filter.trainingGoalIds?.forEach((id) => p.append("trainingGoalIds", String(id)));

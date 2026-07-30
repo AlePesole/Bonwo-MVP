@@ -12,6 +12,7 @@ import { CatalogPage } from "@/catalog/CatalogPage";
 import { LibraryPage } from "@/library/LibraryPage";
 import { WorkoutsPage } from "@/library/WorkoutsPage";
 import { RoutinesPage } from "@/library/RoutinesPage";
+import ProgramsPage from "@/library/ProgramsPage";
 
 export default function App() {
   return (
@@ -64,6 +65,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <RoutinesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/library/programs"
+            element={
+              <ProtectedRoute>
+                <ProgramsPage />
               </ProtectedRoute>
             }
           />

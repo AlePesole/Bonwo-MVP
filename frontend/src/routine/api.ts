@@ -2,6 +2,8 @@ import { api } from "@/lib/axios";
 import type { PageResponse, RoutineResponse } from "@/types/api";
 
 export interface RoutineFilter {
+  muscleGroupIds?: number[];
+  muscleSubGroupIds?: number[];
   equipmentIds?: number[];
   activityIds?: number[];
   trainingGoalIds?: number[];

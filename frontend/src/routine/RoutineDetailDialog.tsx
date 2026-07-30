@@ -117,14 +117,17 @@ function SlotListItem({ slot, onView }: { slot: ExerciseSlotResponse; onView: (e
           <span className="text-xs text-muted-foreground w-5 shrink-0 text-right">{slot.position}.</span>
           {slot.exercise ? (
             <>
-              <div className="h-8 w-8 rounded-md bg-muted overflow-hidden shrink-0">
+              <div className="h-12 w-12 rounded-md bg-muted overflow-hidden shrink-0">
                 {slot.exercise.thumbnail?.url ? (
                   <img src={slot.exercise.thumbnail.url} className="h-full w-full object-cover" alt="" />
                 ) : (
-                  <Dumbbell className="h-4 w-4 text-muted-foreground m-2" />
+                  <Dumbbell className="h-5 w-5 text-muted-foreground m-3.5" />
                 )}
               </div>
-              <span className="flex-1 text-sm font-medium truncate">{slot.exercise.title}</span>
+              <div className="flex-1 min-w-0">
+                <span className="text-sm font-medium truncate block">{slot.exercise.title}</span>
+                <span className="text-xs text-muted-foreground">{slot.sets.length} set{slot.sets.length !== 1 ? "s" : ""}</span>
+              </div>
             </>
           ) : (
             <>
@@ -132,7 +135,6 @@ function SlotListItem({ slot, onView }: { slot: ExerciseSlotResponse; onView: (e
               <span className="flex-1 text-sm text-destructive italic">Deleted exercise</span>
             </>
           )}
-          <span className="text-xs text-muted-foreground shrink-0">{slot.sets.length} sets</span>
         </button>
         {slot.exercise && (
           <button
@@ -367,16 +369,17 @@ export function RoutineDetailDialog({ routine, onClose }: { routine: RoutineResp
           {/* ── Top: thumbnail + catalog stats ── */}
           <div className="flex flex-col sm:flex-row gap-5 mt-4 items-start">
             {/* Thumbnail + quick stats below */}
-            <div className="sm:w-[65%] shrink-0 space-y-2">
-              <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-muted flex items-center justify-center border border-primary/50">
+            <div className="sm:w-[65%] shrink-0 space-y-2 flex flex-col items-end">
+              {/* Square thumbnail — same height as aspect-video, glued to the right */}
+              <div className="w-[56.25%] aspect-square rounded-xl overflow-hidden bg-muted flex items-center justify-center border border-primary/50">
                 {routine.thumbnail?.url ? (
-                  <img src={routine.thumbnail.url} alt={routine.title} className="w-full h-full object-cover" />
+                  <img src={routine.thumbnail.url} alt={routine.title} className="h-full w-full object-cover" />
                 ) : (
                   <Dumbbell className="h-12 w-12 text-muted-foreground/30" />
                 )}
               </div>
               {/* Stats row below thumbnail */}
-              <div className="flex flex-wrap gap-3 text-sm px-1">
+              <div className="flex flex-wrap gap-3 text-sm px-1 w-[56.25%]">
                 <div className="flex items-center gap-1.5">
                   <Dumbbell className="h-4 w-4 text-muted-foreground" />
                   <span>{routine.slots.length} exercise{routine.slots.length !== 1 ? "s" : ""}</span>

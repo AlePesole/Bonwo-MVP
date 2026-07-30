@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Dumbbell, Layers } from "lucide-react";
+import { CalendarDays, Dumbbell, Layers } from "lucide-react";
 
 interface SectionCard {
   title: string;
@@ -20,6 +20,12 @@ const SECTIONS: SectionCard[] = [
     description: "Structured workout plans with exercises and sets.",
     icon: <Layers className="h-6 w-6" />,
     to: "/library/routines",
+  },
+  {
+    title: "My Programs",
+    description: "Multi-week training programs built from routines.",
+    icon: <CalendarDays className="h-6 w-6" />,
+    to: "/library/programs",
   },
 ];
 
