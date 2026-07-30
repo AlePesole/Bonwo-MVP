@@ -15,7 +15,11 @@ public final class RoutineSpecifications {
         return (root, query, cb) -> {
             query.distinct(true);
 
-            var predicate = cb.equal(root.get("ownerId"), ownerId);
+            // exclude routines that belong to a TrainingProgram's aggregate — those are managed through
+            // /training-programs, not the personal routine library
+            var predicate = cb.and(
+                    cb.equal(root.get("ownerId"), ownerId),
+                    cb.isNull(root.get("trainingProgramId")));
 
             if (equipmentIds != null && !equipmentIds.isEmpty()) {
                 var equipment = root.<RoutineJpaEntity, Long>join("equipmentIds");

@@ -72,4 +72,10 @@ public class RoutineJpaEntity {
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
+
+    @Column(name = "training_program_id")
+    private Long trainingProgramId;
+
+    @Column(name = "position")
+    private Integer position;
 }

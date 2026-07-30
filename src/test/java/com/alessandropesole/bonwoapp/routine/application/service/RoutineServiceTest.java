@@ -113,7 +113,7 @@ class RoutineServiceTest {
                 List.of(SetConfig.reps(10, null, null)), null);
         Routine routine = Routine.reconstitute(10L, OWNER_ID, "Push Day", null, Level.INTERMEDIATE,
                 null, Duration.ZERO, List.of(slot), null, MuscleSummary.empty(),
-                Set.of(), Set.of(), Set.of(), null);
+                Set.of(), Set.of(), Set.of(), null, null, null);
         when(routineRepository.findById(10L)).thenReturn(Optional.of(routine));
         when(exerciseRepository.findById(EXERCISE_ID)).thenReturn(Optional.of(ownedExercise()));
         when(exerciseUseCase.getById(EXERCISE_ID, OWNER_ID)).thenReturn(exerciseResponse(Map.of()));
@@ -130,7 +130,7 @@ class RoutineServiceTest {
                 List.of(SetConfig.reps(10, null, null)), null);
         Routine routine = Routine.reconstitute(10L, OWNER_ID, "Push Day", null, Level.INTERMEDIATE,
                 null, Duration.ZERO, List.of(slot), null, MuscleSummary.empty(),
-                Set.of(), Set.of(), Set.of(), null);
+                Set.of(), Set.of(), Set.of(), null, null, null);
         when(routineRepository.findById(10L)).thenReturn(Optional.of(routine));
         when(exerciseRepository.findById(EXERCISE_ID)).thenReturn(Optional.empty());
 

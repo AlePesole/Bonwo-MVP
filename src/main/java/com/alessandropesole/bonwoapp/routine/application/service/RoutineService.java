@@ -57,6 +57,11 @@ public class RoutineService implements RoutineUseCase {
 
     @Override
     public RoutineResponse create(CreateRoutineRequest req, Long ownerId) {
+        return create(req, ownerId, null, null);
+    }
+
+    @Override
+    public RoutineResponse create(CreateRoutineRequest req, Long ownerId, Long trainingProgramId, Integer position) {
         catalogValidator.validate(req.equipmentIds(), req.activityIds(), req.trainingGoalIds());
 
         List<ExerciseSlot> slots = ExerciseSlotDtoMapper.toDomainList(req.slots());
@@ -68,7 +73,8 @@ public class RoutineService implements RoutineUseCase {
         Routine routine = Routine.create(
                 ownerId, req.title(), req.description(), req.level(), thumbnailId,
                 slots, req.restBetweenExercises(),
-                req.equipmentIds(), req.activityIds(), req.trainingGoalIds()
+                req.equipmentIds(), req.activityIds(), req.trainingGoalIds(),
+                trainingProgramId, position
         );
         routine.applyMuscleSummary(muscleSummary);
 
@@ -84,6 +90,11 @@ public class RoutineService implements RoutineUseCase {
 
     @Override
     public RoutineResponse update(Long id, UpdateRoutineRequest req, Long ownerId) {
+        return update(id, req, ownerId, null);
+    }
+
+    @Override
+    public RoutineResponse update(Long id, UpdateRoutineRequest req, Long ownerId, Integer newPosition) {
         Routine routine = findOwned(id, ownerId);
 
         if (req.equipmentIds() != null || req.activityIds() != null || req.trainingGoalIds() != null) {
@@ -106,7 +117,7 @@ public class RoutineService implements RoutineUseCase {
                 req.title(), req.description(), req.level(),
                 newThumbnailId, req.removeThumbnail(),
                 newSlots, req.restBetweenExercises(),
-                req.equipmentIds(), req.activityIds(), req.trainingGoalIds()
+                req.equipmentIds(), req.activityIds(), req.trainingGoalIds(), newPosition
         );
         if (newMuscleSummary != null) routine.applyMuscleSummary(newMuscleSummary);
 

@@ -5,6 +5,7 @@ import { routineApi, displayDuration, type RoutineFilter } from "@/routine/api";
 import { catalogApi } from "@/catalog/api";
 import { RoutineDialog } from "@/routine/RoutineDialog";
 import { RoutineDetailDialog } from "@/routine/RoutineDetailDialog";
+import { MuscleGroupFilterRow } from "@/library/MuscleGroupFilterRow";
 import { cn } from "@/lib/utils";
 import { getErrorMessage } from "@/lib/axios";
 import type { Level, MuscleGroupResponse, RoutineResponse } from "@/types/api";
@@ -17,14 +18,14 @@ import { ChevronLeft, Clock, Dumbbell, Layers, Pencil, Plus, SlidersHorizontal, 
 // ── Level badge ───────────────────────────────────────────────────────────────
 
 const LEVEL_COLOR: Record<Level, string> = {
-  BEGINNER: "bg-emerald-500/20 text-emerald-400",
-  INTERMEDIATE: "bg-amber-500/20 text-amber-400",
-  ADVANCED: "bg-red-500/20 text-red-400",
+  BEGINNER: "text-emerald-400 border-emerald-500/50",
+  INTERMEDIATE: "text-amber-400 border-amber-500/50",
+  ADVANCED: "text-red-400 border-red-500/50",
 };
 
 function LevelBadge({ level }: { level: Level }) {
   return (
-    <span className={cn("text-[10px] font-bold px-1.5 py-0.5 rounded-full", LEVEL_COLOR[level])}>
+    <span className={cn("text-[10px] font-bold px-1.5 py-0.5 rounded-full border-2 bg-zinc-800/90", LEVEL_COLOR[level])}>
       {level[0] + level.slice(1).toLowerCase()}
     </span>
   );
@@ -67,7 +68,7 @@ function RoutineCard({
     <div className="group rounded-xl border border-primary/40 bg-card overflow-hidden hover:border-primary transition-colors">
       {/* Thumbnail */}
       <div
-        className="relative aspect-video bg-muted flex items-center justify-center overflow-hidden cursor-pointer"
+        className="relative aspect-square bg-muted flex items-center justify-center overflow-hidden cursor-pointer"
         onClick={onView}
       >
         {routine.thumbnail?.url ? (
@@ -78,7 +79,7 @@ function RoutineCard({
 
         {/* Primary muscle icons — top left */}
         {primaryGroups.length > 0 && (
-          <div className="absolute top-2 left-2 flex items-center gap-1">
+          <div className="absolute top-2 left-2 flex flex-col items-center gap-1">
             {primaryGroups.map((g) =>
               g.icon?.url ? (
                 <img key={g.id} src={g.icon.url} alt={g.name} title={g.name} className="h-9 w-9 object-contain drop-shadow" />
@@ -187,15 +188,47 @@ function RoutinesTab() {
 
   const muscleGroupMap = useMemo(() => new Map(muscleGroups.map((g) => [g.id, g])), [muscleGroups]);
 
-  const activeFilters =
+  const muscleIds = filter.muscleGroupIds ?? [];
+  const subIds = filter.muscleSubGroupIds ?? [];
+  const panelFilters =
     (filter.equipmentIds?.length ?? 0) +
     (filter.activityIds?.length ?? 0) +
     (filter.trainingGoalIds?.length ?? 0);
+  const hasAnyFilter = panelFilters > 0 || muscleIds.length > 0 || subIds.length > 0;
 
+  // Don't send muscle ids to the API (backend has no muscle filter for routines)
   const { data, isLoading, error } = useQuery({
-    queryKey: ["routines", filter, page],
-    queryFn: () => routineApi.list(filter, page),
+    queryKey: ["routines", { equipmentIds: filter.equipmentIds, activityIds: filter.activityIds, trainingGoalIds: filter.trainingGoalIds }, page],
+    queryFn: () =>
+      routineApi.list(
+        {
+          equipmentIds: filter.equipmentIds,
+          activityIds: filter.activityIds,
+          trainingGoalIds: filter.trainingGoalIds,
+        },
+        page
+      ),
   });
+
+  const routines = useMemo(() => {
+    const list = data?.content ?? [];
+    if (subIds.length > 0) {
+      return list.filter((r) =>
+        r.slots.some(
+          (slot) =>
+            slot.exercise != null &&
+            slot.exercise.muscles.some((m) => subIds.includes(m.subGroupId))
+        )
+      );
+    }
+    if (muscleIds.length === 0) return list;
+    return list.filter((r) =>
+      muscleIds.some((id) => {
+        const score = r.muscleSummary[String(id)];
+        return score != null && score > 0;
+      })
+    );
+  }, [data?.content, muscleIds, subIds]);
 
   const deleteMutation = useMutation({
     mutationFn: routineApi.delete,
@@ -204,6 +237,31 @@ function RoutinesTab() {
 
   const handleFilterChange = (f: RoutineFilter) => { setFilter(f); setPage(0); };
 
+  const setMuscleGroupIds = (ids: number[]) => {
+    setFilter((prev) => {
+      const allowed = new Set(
+        muscleGroups
+          .filter((g) => ids.includes(g.id))
+          .flatMap((g) => g.subGroups.map((s) => s.id))
+      );
+      const nextSubs = (prev.muscleSubGroupIds ?? []).filter((sid) => allowed.has(sid));
+      return {
+        ...prev,
+        muscleGroupIds: ids.length ? ids : undefined,
+        muscleSubGroupIds: nextSubs.length ? nextSubs : undefined,
+      };
+    });
+    setPage(0);
+  };
+
+  const setMuscleSubGroupIds = (ids: number[]) => {
+    setFilter((prev) => ({
+      ...prev,
+      muscleSubGroupIds: ids.length ? ids : undefined,
+    }));
+    setPage(0);
+  };
+
   return (
     <div className="space-y-4">
       {/* Toolbar */}
@@ -211,13 +269,13 @@ function RoutinesTab() {
         <Button variant={filterOpen ? "default" : "outline"} size="sm" className="gap-1.5" onClick={() => setFilterOpen((v) => !v)}>
           <SlidersHorizontal className="h-4 w-4" />
           Filters
-          {activeFilters > 0 && (
+          {panelFilters > 0 && (
             <span className="ml-0.5 bg-primary-foreground text-primary rounded-full text-[10px] font-bold w-4 h-4 flex items-center justify-center">
-              {activeFilters}
+              {panelFilters}
             </span>
           )}
         </Button>
-        {activeFilters > 0 && (
+        {hasAnyFilter && (
           <Button variant="ghost" size="sm" className="gap-1 text-muted-foreground" onClick={() => { setFilter({}); setPage(0); }}>
             <X className="h-3.5 w-3.5" /> Clear
           </Button>
@@ -228,6 +286,14 @@ function RoutinesTab() {
         </Button>
       </div>
 
+      <MuscleGroupFilterRow
+        muscleGroups={muscleGroups}
+        selectedGroupIds={muscleIds}
+        selectedSubGroupIds={subIds}
+        onGroupChange={setMuscleGroupIds}
+        onSubGroupChange={setMuscleSubGroupIds}
+      />
+
       {filterOpen && <FilterPanel filter={filter} onChange={handleFilterChange} />}
 
       {isLoading ? (
@@ -236,14 +302,18 @@ function RoutinesTab() {
         <ApiError message={getErrorMessage(error)} />
       ) : (
         <>
-          {!data?.content.length ? (
+          {!routines.length ? (
             <div className="text-center py-16 text-muted-foreground">
               <Layers className="h-10 w-10 mx-auto mb-3 opacity-30" />
-              <p className="text-sm">No routines yet. Create your first one!</p>
+              <p className="text-sm">
+                {hasAnyFilter
+                  ? "No routines match the current filters."
+                  : "No routines yet. Create your first one!"}
+              </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {data.content.map((routine) => (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+              {routines.map((routine) => (
                 <RoutineCard
                   key={routine.id}
                   routine={routine}
@@ -289,7 +359,7 @@ export function RoutinesPage() {
       <div className="mb-6 text-center">
         <h1 className="text-3xl font-bold">My Routines</h1>
         <p className="text-muted-foreground mt-1">
-          Exercises · Routines · Programs (soon)
+          Exercises · Routines · Programs
         </p>
       </div>
 
@@ -302,7 +372,7 @@ export function RoutinesPage() {
             <TabsTrigger value="routines" className="gap-1.5">
               Routines
             </TabsTrigger>
-            <TabsTrigger value="programs" disabled className="gap-1.5 opacity-40">
+            <TabsTrigger value="programs" className="gap-1.5" onMouseDown={() => navigate("/library/programs")}>
               Programs
             </TabsTrigger>
           </TabsList>

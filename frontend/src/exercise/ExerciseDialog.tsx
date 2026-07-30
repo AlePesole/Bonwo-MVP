@@ -765,7 +765,7 @@ export function ExerciseDialog({
                   <Label>Thumbnail <span className="text-muted-foreground">(optional)</span></Label>
                   <div className="flex items-center gap-3">
                     <div
-                      className="h-16 w-24 rounded-lg border border-border bg-muted flex items-center justify-center cursor-pointer hover:bg-accent transition-colors shrink-0 overflow-hidden"
+                      className="h-16 w-16 rounded-lg border border-border bg-muted flex items-center justify-center cursor-pointer hover:bg-accent transition-colors shrink-0 overflow-hidden"
                       onClick={() => thumb.fileRef.current?.click()}
                     >
                       {thumb.uploading ? (

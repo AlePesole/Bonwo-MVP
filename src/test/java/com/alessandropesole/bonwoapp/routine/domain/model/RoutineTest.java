@@ -81,7 +81,7 @@ class RoutineTest {
     void reconstitute_setsAllFieldsIncludingId() {
         Routine routine = Routine.reconstitute(5L, 1L, "Squat Day", "desc", Level.ADVANCED,
                 null, Duration.ofMinutes(10), List.of(), null, MuscleSummary.empty(),
-                Set.of(), Set.of(), Set.of(), null);
+                Set.of(), Set.of(), Set.of(), null, null, null);
 
         assertThat(routine.getId()).isEqualTo(5L);
         assertThat(routine.getTitle()).isEqualTo("Squat Day");
@@ -93,7 +93,7 @@ class RoutineTest {
     void update_onlyOverwritesNonNullFields() {
         Routine routine = Routine.reconstitute(1L, 1L, "Push Day", "old desc", Level.INTERMEDIATE,
                 null, Duration.ZERO, List.of(), null, MuscleSummary.empty(),
-                Set.of(), Set.of(), Set.of(), null);
+                Set.of(), Set.of(), Set.of(), null, null, null);
 
         routine.update(null, "new desc", null, null, false,
                 null, null, null, null, null);
@@ -107,7 +107,7 @@ class RoutineTest {
     void update_rejectsDuplicatePositionsInNewSlots() {
         Routine routine = Routine.reconstitute(1L, 1L, "Push Day", null, Level.INTERMEDIATE,
                 null, Duration.ZERO, List.of(), null, MuscleSummary.empty(),
-                Set.of(), Set.of(), Set.of(), null);
+                Set.of(), Set.of(), Set.of(), null, null, null);
         List<ExerciseSlot> duplicated = List.of(
                 slotWithOneRepsSet(1L, 1, null),
                 slotWithOneRepsSet(2L, 1, null));
@@ -121,7 +121,7 @@ class RoutineTest {
     void update_recomputesEstimatedDurationFromNewSlots() {
         Routine routine = Routine.reconstitute(1L, 1L, "Push Day", null, Level.INTERMEDIATE,
                 null, Duration.ZERO, List.of(), null, MuscleSummary.empty(),
-                Set.of(), Set.of(), Set.of(), null);
+                Set.of(), Set.of(), Set.of(), null, null, null);
         List<ExerciseSlot> newSlots = List.of(slotWithOneRepsSet(1L, 1, null));
 
         routine.update(null, null, null, null, false,
@@ -135,7 +135,7 @@ class RoutineTest {
     void applyMuscleSummary_overwritesSummary() {
         Routine routine = Routine.reconstitute(1L, 1L, "Push Day", null, Level.INTERMEDIATE,
                 null, Duration.ZERO, List.of(), null, MuscleSummary.empty(),
-                Set.of(), Set.of(), Set.of(), null);
+                Set.of(), Set.of(), Set.of(), null, null, null);
         MuscleSummary summary = MuscleSummary.of(java.util.Map.of(1L, 0.8));
 
         routine.applyMuscleSummary(summary);

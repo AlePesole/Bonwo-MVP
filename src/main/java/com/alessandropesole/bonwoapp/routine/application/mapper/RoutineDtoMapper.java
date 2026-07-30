@@ -26,7 +26,7 @@ public final class RoutineDtoMapper {
                 thumbnail, r.getEstimatedDuration(), r.getRestBetweenExercises(),
                 slots, r.getMuscleSummary().getScores(),
                 equipment, activities, trainingGoals,
-                r.getCreatedAt()
+                r.getCreatedAt(), r.getTrainingProgramId(), r.getPosition()
         );
     }
 }

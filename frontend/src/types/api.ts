@@ -177,6 +177,41 @@ export interface RoutineResponse {
   activities: ActivityResponse[];
   trainingGoals: TrainingGoalResponse[];
   createdAt: string;
+  trainingProgramId: number | null;
+  position: number | null;
+}
+
+// ── Program ───────────────────────────────────────────────────────────────────
+
+export interface ProgramRoutineDto {
+  id?: number;
+  title: string;
+  description?: string | null;
+  level: Level;
+  thumbnailUploadToken?: string;
+  removeThumbnail?: boolean;
+  position: number;
+  restBetweenExercises?: string | null;
+  slots: ExerciseSlotDto[];
+  equipmentIds?: number[];
+  activityIds?: number[];
+  trainingGoalIds?: number[];
+}
+
+export interface TrainingProgramResponse {
+  id: number;
+  ownerId: number;
+  title: string;
+  description: string | null;
+  level: Level;
+  thumbnail: ImageResponse | null;
+  daysPerWeek: number;
+  routines: RoutineResponse[];
+  muscleSummary: Record<string, number>;
+  equipment: EquipmentResponse[];
+  activities: ActivityResponse[];
+  trainingGoals: TrainingGoalResponse[];
+  createdAt: string;
 }
 
 
