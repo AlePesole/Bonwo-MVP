@@ -32,12 +32,24 @@ public class Routine extends AggregateRoot {
     private Set<Long> activityIds;
     private Set<Long> trainingGoalIds;
     private Instant createdAt;
+    private Long trainingProgramId;
+    private Integer position;
 
     public static Routine create(Long ownerId, String title, String description,
                                  Level level, Long thumbnailId, List<ExerciseSlot> slots,
                                  Duration restBetweenExercises,
                                  Set<Long> equipmentIds, Set<Long> activityIds,
                                  Set<Long> trainingGoalIds) {
+        return create(ownerId, title, description, level, thumbnailId, slots, restBetweenExercises,
+                equipmentIds, activityIds, trainingGoalIds, null, null);
+    }
+
+    /** Internal factory used by TrainingProgramService to create a Routine that's part of a program's aggregate. */
+    public static Routine create(Long ownerId, String title, String description,
+                                 Level level, Long thumbnailId, List<ExerciseSlot> slots,
+                                 Duration restBetweenExercises,
+                                 Set<Long> equipmentIds, Set<Long> activityIds, Set<Long> trainingGoalIds,
+                                 Long trainingProgramId, Integer position) {
 
         if (ownerId == null) throw new IllegalArgumentException("ownerId required");
         validateTitle(title);
@@ -57,6 +69,8 @@ public class Routine extends AggregateRoot {
         r.activityIds = new LinkedHashSet<>(activityIds != null ? activityIds : Set.of());
         r.trainingGoalIds = new LinkedHashSet<>(trainingGoalIds != null ? trainingGoalIds : Set.of());
         r.createdAt = Instant.now();
+        r.trainingProgramId = trainingProgramId;
+        r.position = position;
         return r;
     }
 
@@ -65,7 +79,7 @@ public class Routine extends AggregateRoot {
                                        List<ExerciseSlot> slots, Duration restBetweenExercises,
                                        MuscleSummary muscleSummary,
                                        Set<Long> equipmentIds, Set<Long> activityIds, Set<Long> trainingGoalIds,
-                                       Instant createdAt) {
+                                       Instant createdAt, Long trainingProgramId, Integer position) {
 
         Routine r = new Routine();
         r.id = id;
@@ -82,6 +96,8 @@ public class Routine extends AggregateRoot {
         r.activityIds = new LinkedHashSet<>(activityIds != null ? activityIds : Set.of());
         r.trainingGoalIds = new LinkedHashSet<>(trainingGoalIds != null ? trainingGoalIds : Set.of());
         r.createdAt = createdAt;
+        r.trainingProgramId = trainingProgramId;
+        r.position = position;
         return r;
     }
 
@@ -91,7 +107,22 @@ public class Routine extends AggregateRoot {
                        Duration restBetweenExercises,
                        Set<Long> equipmentIds, Set<Long> activityIds,
                        Set<Long> trainingGoalIds) {
+        update(title, description, level, thumbnailId, removeThumbnail, newSlots, restBetweenExercises,
+                equipmentIds, activityIds, trainingGoalIds, null);
+    }
 
+    /**
+     * newPosition is internal-only — set by TrainingProgramService when reordering a Routine within its
+     * program (never exposed on the public UpdateRoutineRequest, meaningless for a standalone routine).
+     */
+    public void update(String title, String description,
+                       Level level, Long thumbnailId, boolean removeThumbnail,
+                       List<ExerciseSlot> newSlots,
+                       Duration restBetweenExercises,
+                       Set<Long> equipmentIds, Set<Long> activityIds,
+                       Set<Long> trainingGoalIds, Integer newPosition) {
+
+        if (newPosition != null) this.position = newPosition;
         if (title != null) {
             validateTitle(title);
             this.title = title.strip();
@@ -131,7 +162,7 @@ public class Routine extends AggregateRoot {
     private static Duration computeDuration(List<ExerciseSlot> slots, Duration restBetweenExercises) {
         Duration total = Duration.ZERO;
         for (int i = 0; i < slots.size(); i++) {
-            ExerciseSlot slot = slots.get(i);
+        ExerciseSlot slot = slots.get(i);
             total = total.plus(setTime(slot)).plus(restBetweenSetsTime(slot));
 
             boolean hasNextSlot = i < slots.size() - 1;
