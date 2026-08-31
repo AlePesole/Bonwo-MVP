@@ -7,7 +7,7 @@ import { PageSpinner } from "@/components/Spinner";
 import { ApiError } from "@/components/ApiError";
 import { getErrorMessage } from "@/lib/axios";
 import type { ActivityResponse, EquipmentResponse, TrainingGoalResponse } from "@/types/api";
-import { Dumbbell, PersonStanding, Target, Wrench } from "lucide-react";
+import { Dumbbell, Flame, Layers, Target } from "lucide-react";
 
 function CatalogItemCard({
   icon,
@@ -114,11 +114,11 @@ export function CatalogPage() {
         <div className="flex justify-center mb-6">
           <TabsList>
             <TabsTrigger value="activities" className="gap-1.5">
-              <Dumbbell className="h-4 w-4" />
+              <Flame className="h-4 w-4" />
               Activities
             </TabsTrigger>
             <TabsTrigger value="equipment" className="gap-1.5">
-              <Wrench className="h-4 w-4" />
+              <Dumbbell className="h-4 w-4" />
               Equipment
             </TabsTrigger>
             <TabsTrigger value="goals" className="gap-1.5">
@@ -126,7 +126,7 @@ export function CatalogPage() {
               Training Goals
             </TabsTrigger>
             <TabsTrigger value="muscles" className="gap-1.5">
-              <PersonStanding className="h-4 w-4" />
+              <Layers className="h-4 w-4" />
               Muscles
             </TabsTrigger>
           </TabsList>
