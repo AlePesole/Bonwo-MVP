@@ -12,7 +12,15 @@ import type {
 } from "@/types/api";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AlertTriangle, CalendarDays, Dumbbell, Eye, Layers } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { AlertTriangle, CalendarDays, Copy, Dumbbell, Eye, Layers, MoreVertical, Pencil, Trash2 } from "lucide-react";
 import { RoutineDetailDialog } from "@/routine/RoutineDetailDialog";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -328,7 +336,19 @@ function ProgramSummaryTab({ muscleSummary, muscleGroups }: {
 
 // ── Main dialog ───────────────────────────────────────────────────────────────
 
-export function ProgramDetailDialog({ program, onClose }: { program: TrainingProgramResponse | null; onClose: () => void }) {
+export function ProgramDetailDialog({
+  program,
+  onClose,
+  onEdit,
+  onDuplicate,
+  onDelete,
+}: {
+  program: TrainingProgramResponse | null;
+  onClose: () => void;
+  onEdit?: () => void;
+  onDuplicate?: () => void;
+  onDelete?: () => void;
+}) {
   const [viewRoutine, setViewRoutine] = useState<RoutineResponse | null>(null);
 
   const { data: muscleGroups = [] } = useQuery({
@@ -341,11 +361,48 @@ export function ProgramDetailDialog({ program, onClose }: { program: TrainingPro
   if (!program) return null;
 
   const sortedRoutines = [...program.routines].sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+  const hasActions = !!(onEdit || onDuplicate || onDelete);
 
   return (
     <>
       <Dialog open={!!program} onOpenChange={(v) => !v && onClose()}>
         <DialogContent className="sm:max-w-4xl max-h-[90vh] flex flex-col overflow-hidden p-0">
+          {hasActions && (
+            <div className="absolute right-12 top-4 z-10">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 opacity-70 hover:opacity-100">
+                    <MoreVertical className="h-4 w-4" />
+                    <span className="sr-only">Actions</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-52 z-[60]">
+                  {onEdit && (
+                    <DropdownMenuItem onClick={onEdit}>
+                      <Pencil className="h-4 w-4 mr-2" /> Edit
+                    </DropdownMenuItem>
+                  )}
+                  {onDuplicate && (
+                    <DropdownMenuItem onClick={onDuplicate}>
+                      <Copy className="h-4 w-4 mr-2" /> Duplicate
+                    </DropdownMenuItem>
+                  )}
+                  {onDelete && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        className="text-destructive focus:text-destructive"
+                        onClick={onDelete}
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" /> Delete
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          )}
+
           <DialogHeader className="px-6 pt-5 pb-0 shrink-0 items-center text-center">
             <DialogTitle className="text-xl font-bold">{program.title}</DialogTitle>
             <span className={cn("inline-flex items-center self-center px-3 py-1 rounded-full text-xs font-semibold border mt-2", LEVEL_COLOR[program.level])}>

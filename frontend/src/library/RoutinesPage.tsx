@@ -178,6 +178,7 @@ function RoutinesTab() {
   const [filterOpen, setFilterOpen] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<RoutineResponse | null>(null);
+  const [seedFrom, setSeedFrom] = useState<RoutineResponse | null>(null);
   const [detailRoutine, setDetailRoutine] = useState<RoutineResponse | null>(null);
 
   const { data: muscleGroups = [] } = useQuery({
@@ -281,7 +282,7 @@ function RoutinesTab() {
           </Button>
         )}
         <div className="flex-1" />
-        <Button size="sm" className="gap-1.5" onClick={() => { setEditing(null); setDialogOpen(true); }}>
+        <Button size="sm" className="gap-1.5" onClick={() => { setEditing(null); setSeedFrom(null); setDialogOpen(true); }}>
           <Plus className="h-4 w-4" /> New Routine
         </Button>
       </div>
@@ -319,7 +320,7 @@ function RoutinesTab() {
                   routine={routine}
                   muscleGroupMap={muscleGroupMap}
                   onView={() => setDetailRoutine(routine)}
-                  onEdit={() => { setEditing(routine); setDialogOpen(true); }}
+                  onEdit={() => { setSeedFrom(null); setEditing(routine); setDialogOpen(true); }}
                   onDelete={() => window.confirm(`Delete "${routine.title}"?`) && deleteMutation.mutate(routine.id)}
                 />
               ))}
@@ -337,8 +338,39 @@ function RoutinesTab() {
         </>
       )}
 
-      <RoutineDialog open={dialogOpen} editing={editing} onClose={() => setDialogOpen(false)} />
-      <RoutineDetailDialog routine={detailRoutine} onClose={() => setDetailRoutine(null)} />
+      <RoutineDialog
+        open={dialogOpen}
+        editing={editing}
+        seedFrom={seedFrom}
+        onClose={() => { setDialogOpen(false); setSeedFrom(null); }}
+      />
+      <RoutineDetailDialog
+        routine={detailRoutine}
+        onClose={() => setDetailRoutine(null)}
+        onEdit={() => {
+          if (!detailRoutine) return;
+          const r = detailRoutine;
+          setDetailRoutine(null);
+          setSeedFrom(null);
+          setEditing(r);
+          setDialogOpen(true);
+        }}
+        onDuplicate={() => {
+          if (!detailRoutine) return;
+          const r = detailRoutine;
+          setDetailRoutine(null);
+          setEditing(null);
+          setSeedFrom(r);
+          setDialogOpen(true);
+        }}
+        onDelete={() => {
+          if (!detailRoutine) return;
+          if (!window.confirm(`Delete "${detailRoutine.title}"?`)) return;
+          deleteMutation.mutate(detailRoutine.id, {
+            onSuccess: () => setDetailRoutine(null),
+          });
+        }}
+      />
     </div>
   );
 }

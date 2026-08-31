@@ -40,7 +40,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
 import { ApiError } from "@/components/ApiError";
 import { Spinner } from "@/components/Spinner";
-import { ChevronDown, Dumbbell, GripVertical, ImagePlus, Layers, Plus, Trash2, X } from "lucide-react";
+import { ChevronDown, Copy, Dumbbell, GripVertical, ImagePlus, Layers, Plus, Trash2, X } from "lucide-react";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -670,21 +670,113 @@ function useThumbnailUpload() {
   return { token, removed, preview, uploading, error, reset, remove, fileRef, handleFile };
 }
 
+// ── Duplicate routine picker ──────────────────────────────────────────────────
+
+function DuplicateRoutinePicker({
+  onSelect,
+  onBack,
+}: {
+  onSelect: (r: RoutineResponse) => void;
+  onBack: () => void;
+}) {
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(0);
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["routines-duplicate-picker", page],
+    queryFn: () => routineApi.list({}, page, 12),
+    staleTime: 30_000,
+  });
+
+  const routines = (data?.content ?? []).filter((r) =>
+    search ? r.title.toLowerCase().includes(search.toLowerCase()) : true
+  );
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={onBack}
+          className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0"
+        >
+          <ChevronDown className="h-4 w-4 rotate-90" /> Back
+        </button>
+        <Input
+          value={search}
+          onChange={(e) => { setSearch(e.target.value); setPage(0); }}
+          placeholder="Search your routines…"
+          className="h-8 text-sm flex-1"
+          autoFocus
+        />
+      </div>
+
+      <p className="text-xs text-muted-foreground">
+        All data (exercises, sets, details) will be copied. Thumbnail needs to be re-uploaded.
+      </p>
+
+      {isLoading ? (
+        <div className="flex justify-center py-6"><Spinner size="sm" label="" /></div>
+      ) : routines.length === 0 ? (
+        <p className="text-sm text-muted-foreground text-center py-6">No routines found.</p>
+      ) : (
+        <div className="space-y-1.5 overflow-y-auto max-h-[280px]">
+          {routines.map((r) => (
+            <button
+              key={r.id}
+              type="button"
+              onClick={() => onSelect(r)}
+              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg border border-border hover:border-primary/60 hover:bg-accent/30 text-left transition-colors"
+            >
+              <div className="h-9 w-9 rounded-md bg-muted overflow-hidden shrink-0 flex items-center justify-center">
+                {r.thumbnail?.url ? (
+                  <img src={r.thumbnail.url} className="h-full w-full object-cover" alt="" />
+                ) : (
+                  <Layers className="h-4 w-4 text-muted-foreground" />
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate">{r.title}</p>
+                <p className="text-xs text-muted-foreground">
+                  {r.slots.length} exercise{r.slots.length !== 1 ? "s" : ""} · {r.level[0] + r.level.slice(1).toLowerCase()}
+                </p>
+              </div>
+              <span className="text-xs text-primary font-medium shrink-0">Duplicate</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {data && data.totalPages > 1 && (
+        <div className="flex justify-center items-center gap-2">
+          <button type="button" disabled={data.first} onClick={() => setPage((p) => p - 1)} className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-40 px-2 py-1 rounded border border-border">← Prev</button>
+          <span className="text-xs text-muted-foreground">{page + 1} / {data.totalPages}</span>
+          <button type="button" disabled={data.last} onClick={() => setPage((p) => p + 1)} className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-40 px-2 py-1 rounded border border-border">Next →</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main dialog ───────────────────────────────────────────────────────────────
 
 export function RoutineDialog({
   open,
   editing,
+  seedFrom = null,
   onClose,
 }: {
   open: boolean;
   editing: RoutineResponse | null;
+  /** When creating (not editing), preload form as a duplicate of this routine. */
+  seedFrom?: RoutineResponse | null;
   onClose: () => void;
 }) {
   const qc = useQueryClient();
   const [serverError, setServerError] = useState<string | null>(null);
   const [pickerSlotIndex, setPickerSlotIndex] = useState<number | null>(null);
   const [expandedSlot, setExpandedSlot] = useState<number | null>(0);
+  const [duplicatePickerOpen, setDuplicatePickerOpen] = useState(false);
   const thumb = useThumbnailUpload();
 
   const { data: equipment = [] } = useQuery({ queryKey: ["catalog", "equipment"], queryFn: catalogApi.listEquipment, staleTime: 60_000 });
@@ -746,42 +838,58 @@ export function RoutineDialog({
     ]).size;
   }, [resolvedExercises, slotsWatched]);
 
+  const applyRoutineData = (source: RoutineResponse, titleSuffix = "") => {
+    const resolved = source.slots
+      .map((s) => s.exercise)
+      .filter((e): e is ExerciseResponse => e != null);
+    setResolvedExercises(resolved);
+    // Preview only — backend can't reuse an existing thumbnailId without a new upload token
+    thumb.reset(source.thumbnail?.url ?? null);
+    reset({
+      title: `${source.title}${titleSuffix}`,
+      level: source.level,
+      description: source.description ?? "",
+      restBetweenExercisesSecs: parseDuration(source.restBetweenExercises),
+      slots: source.slots.map((s) => ({
+        exerciseId: s.exerciseId,
+        restBetweenSetsSecs: parseDuration(s.restBetweenSets),
+        sets: s.sets.map((set) => ({
+          type: set.type,
+          reps: set.reps ?? undefined,
+          weightKg: set.weightKg ?? undefined,
+          weightMode: set.weightMode ?? "TOTAL",
+          durationSecs: set.duration ? parseDuration(set.duration) : undefined,
+        })),
+      })),
+      equipmentIds: source.equipment.map((e) => e.id),
+      activityIds: source.activities.map((a) => a.id),
+      trainingGoalIds: source.trainingGoals.map((g) => g.id),
+    });
+  };
+
   useEffect(() => {
     if (open) {
-      thumb.reset(editing?.thumbnail?.url ?? null);
       setServerError(null);
       setPickerSlotIndex(null);
+      setDuplicatePickerOpen(false);
       if (editing) {
-        const resolved = editing.slots
-          .map((s) => s.exercise)
-          .filter((e): e is ExerciseResponse => e != null);
-        setResolvedExercises(resolved);
-        reset({
-          title: editing.title,
-          level: editing.level,
-          description: editing.description ?? "",
-          restBetweenExercisesSecs: parseDuration(editing.restBetweenExercises),
-          slots: editing.slots.map((s, i) => ({
-            exerciseId: s.exerciseId,
-            restBetweenSetsSecs: parseDuration(s.restBetweenSets),
-            sets: s.sets.map((set) => ({
-              type: set.type,
-              reps: set.reps ?? undefined,
-              weightKg: set.weightKg ?? undefined,
-              weightMode: set.weightMode ?? "TOTAL",
-              durationSecs: set.duration ? parseDuration(set.duration) : undefined,
-            })),
-          })),
-          equipmentIds: editing.equipment.map((e) => e.id),
-          activityIds: editing.activities.map((a) => a.id),
-          trainingGoalIds: editing.trainingGoals.map((g) => g.id),
-        });
+        applyRoutineData(editing);
+      } else if (seedFrom) {
+        applyRoutineData(seedFrom, " (copy)");
+        setExpandedSlot(0);
       } else {
+        thumb.reset(null);
         setResolvedExercises([]);
         reset({ level: "INTERMEDIATE", slots: [], equipmentIds: [], activityIds: [], trainingGoalIds: [] });
       }
     }
-  }, [open, editing]);
+  }, [open, editing, seedFrom]);
+
+  const handleDuplicate = (source: RoutineResponse) => {
+    applyRoutineData(source, " (copy)");
+    setDuplicatePickerOpen(false);
+    setExpandedSlot(0);
+  };
 
   const mutation = useMutation({
     mutationFn: (data: RoutineForm) => {
@@ -836,6 +944,14 @@ export function RoutineDialog({
         <form onSubmit={handleSubmit((d) => mutation.mutate(d))} className="flex flex-col gap-4">
           {serverError && <ApiError message={serverError} />}
 
+          {duplicatePickerOpen && !editing ? (
+            <div className="rounded-lg border border-primary/40 bg-card/50 p-4 min-h-[300px]">
+              <DuplicateRoutinePicker
+                onSelect={handleDuplicate}
+                onBack={() => setDuplicatePickerOpen(false)}
+              />
+            </div>
+          ) : (
           <Tabs defaultValue="info">
             <TabsList className="w-full">
               <TabsTrigger value="info" className="flex-1">Info</TabsTrigger>
@@ -850,6 +966,20 @@ export function RoutineDialog({
 
             {/* ── Info tab ── */}
             <TabsContent value="info" className="space-y-4 mt-4">
+              {!editing && (
+                <button
+                  type="button"
+                  onClick={() => setDuplicatePickerOpen(true)}
+                  className="w-full flex items-center justify-between px-4 py-2.5 rounded-lg border border-dashed border-primary/40 bg-primary/5 hover:bg-primary/10 transition-colors"
+                >
+                  <span className="flex items-center gap-2 text-xs font-medium text-primary">
+                    <Copy className="h-3.5 w-3.5" />
+                    Duplicate an existing routine
+                  </span>
+                  <ChevronDown className="h-4 w-4 text-primary -rotate-90" />
+                </button>
+              )}
+
               <div className="grid grid-cols-3 gap-3">
                 <div className="col-span-2 space-y-1.5">
                   <Label>Title</Label>
@@ -982,12 +1112,15 @@ export function RoutineDialog({
               />
             </TabsContent>
           </Tabs>
+          )}
 
           <DialogFooter className="pt-2">
             <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-            <Button type="submit" disabled={mutation.isPending || thumb.uploading}>
-              {mutation.isPending ? <Spinner size="sm" label="" /> : editing ? "Save changes" : "Create routine"}
-            </Button>
+            {!duplicatePickerOpen && (
+              <Button type="submit" disabled={mutation.isPending || thumb.uploading}>
+                {mutation.isPending ? <Spinner size="sm" label="" /> : editing ? "Save changes" : "Create routine"}
+              </Button>
+            )}
           </DialogFooter>
         </form>
       </DialogContent>

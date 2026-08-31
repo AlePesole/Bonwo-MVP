@@ -1,21 +1,48 @@
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { catalogApi } from "@/catalog/api";
 import { BODY_DIAGRAMS } from "@/catalog/bodyDiagram";
-import { displayDuration } from "./api";
+import { displayDuration, routineApi, type RoutinePayload } from "./api";
+import { programApi } from "@/program/api";
 import { cn } from "@/lib/utils";
+import { getErrorMessage } from "@/lib/axios";
 import type {
   ActivationLevel,
   ExerciseSlotResponse,
   MuscleGroupResponse,
   MuscleSubGroupResponse,
+  ProgramRoutineDto,
   RoutineResponse,
   SetConfigResponse,
   SetType,
+  TrainingProgramResponse,
 } from "@/types/api";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dumbbell, Layers, Clock, AlertTriangle, Eye } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { ApiError } from "@/components/ApiError";
+import { Spinner } from "@/components/Spinner";
+import {
+  ChevronDown,
+  Copy,
+  Dumbbell,
+  Layers,
+  Clock,
+  AlertTriangle,
+  Eye,
+  MoreVertical,
+  Pencil,
+  Trash2,
+  FolderPlus,
+} from "lucide-react";
 import { ExerciseDetailDialog } from "@/exercise/ExerciseDetailDialog";
 import type { ExerciseResponse as ExerciseResponseType } from "@/types/api";
 
@@ -341,13 +368,207 @@ function SummaryTab({ muscleSummary, muscleGroups }: { muscleSummary: Record<str
 
 // ── Main dialog ───────────────────────────────────────────────────────────────
 
-export function RoutineDetailDialog({ routine, onClose }: { routine: RoutineResponse | null; onClose: () => void }) {
+function toProgramRoutineDto(r: RoutineResponse, position: number, keepId: boolean): ProgramRoutineDto {
+  return {
+    ...(keepId ? { id: r.id } : {}),
+    title: r.title,
+    description: r.description ?? undefined,
+    level: r.level,
+    removeThumbnail: false,
+    position,
+    restBetweenExercises: r.restBetweenExercises,
+    slots: r.slots.map((s, i) => ({
+      exerciseId: s.exerciseId,
+      position: s.position ?? i + 1,
+      restBetweenSets: s.restBetweenSets,
+      sets: s.sets.map((set) => ({
+        type: set.type,
+        reps: set.reps || undefined,
+        weightKg: set.weightKg ?? undefined,
+        weightMode: set.weightMode ?? "TOTAL",
+        duration: set.duration ?? undefined,
+      })),
+    })),
+    equipmentIds: r.equipment.map((e) => e.id),
+    activityIds: r.activities.map((a) => a.id),
+    trainingGoalIds: r.trainingGoals.map((g) => g.id),
+  };
+}
+
+/** Build a create payload for a standalone My Routines copy (no program id). */
+function toStandaloneRoutinePayload(r: RoutineResponse): RoutinePayload {
+  return {
+    title: `${r.title} (copy)`,
+    description: r.description ?? undefined,
+    level: r.level,
+    restBetweenExercises: r.restBetweenExercises,
+    slots: r.slots.map((s, i) => ({
+      exerciseId: s.exerciseId,
+      position: s.position ?? i + 1,
+      restBetweenSets: s.restBetweenSets ?? undefined,
+      sets: s.sets.map((set) => ({
+        type: set.type,
+        reps: set.reps || undefined,
+        weightKg: set.weightKg ?? undefined,
+        weightMode: set.weightMode ?? "TOTAL",
+        duration: set.duration ?? undefined,
+      })),
+    })),
+    equipmentIds: r.equipment.map((e) => e.id),
+    activityIds: r.activities.map((a) => a.id),
+    trainingGoalIds: r.trainingGoals.map((g) => g.id),
+  };
+}
+
+function AddToProgramPicker({
+  routine,
+  onBack,
+  onDone,
+}: {
+  routine: RoutineResponse;
+  onBack: () => void;
+  onDone: () => void;
+}) {
+  const qc = useQueryClient();
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["programs-add-routine-picker", page],
+    queryFn: () => programApi.list({}, page, 12),
+    staleTime: 30_000,
+  });
+
+  const programs = (data?.content ?? []).filter((p) =>
+    search ? p.title.toLowerCase().includes(search.toLowerCase()) : true
+  );
+
+  const mutation = useMutation({
+    mutationFn: async (program: TrainingProgramResponse) => {
+      const sorted = [...program.routines].sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+      const existing = sorted.map((r, i) => toProgramRoutineDto(r, i + 1, true));
+      const copied = toProgramRoutineDto(routine, existing.length + 1, false);
+      return programApi.update(program.id, { routines: [...existing, copied] });
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["programs"] });
+      onDone();
+    },
+    onError: (err) => setError(getErrorMessage(err)),
+  });
+
+  return (
+    <div className="space-y-3 px-6 py-4">
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={onBack}
+          disabled={mutation.isPending}
+          className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0"
+        >
+          <ChevronDown className="h-4 w-4 rotate-90" /> Back
+        </button>
+        <Input
+          value={search}
+          onChange={(e) => { setSearch(e.target.value); setPage(0); }}
+          placeholder="Search your programs…"
+          className="h-8 text-sm flex-1"
+          autoFocus
+        />
+      </div>
+
+      <p className="text-xs text-muted-foreground">
+        A copy of this routine will be added to the selected program.
+      </p>
+
+      {error && <ApiError message={error} />}
+
+      {isLoading ? (
+        <div className="flex justify-center py-6"><Spinner size="sm" label="" /></div>
+      ) : programs.length === 0 ? (
+        <p className="text-sm text-muted-foreground text-center py-6">No programs found.</p>
+      ) : (
+        <div className="space-y-1.5 overflow-y-auto max-h-[360px]">
+          {programs.map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              disabled={mutation.isPending}
+              onClick={() => { setError(null); mutation.mutate(p); }}
+              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg border border-border hover:border-primary/60 hover:bg-accent/30 text-left transition-colors disabled:opacity-50"
+            >
+              <div className="h-9 w-9 rounded-md bg-muted overflow-hidden shrink-0 flex items-center justify-center">
+                {p.thumbnail?.url ? (
+                  <img src={p.thumbnail.url} className="h-full w-full object-cover" alt="" />
+                ) : (
+                  <Layers className="h-4 w-4 text-muted-foreground" />
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate">{p.title}</p>
+                <p className="text-xs text-muted-foreground">
+                  {p.routines.length} routine{p.routines.length !== 1 ? "s" : ""} · {p.daysPerWeek}d/wk
+                </p>
+              </div>
+              <span className="text-xs text-primary font-medium shrink-0">
+                {mutation.isPending && mutation.variables?.id === p.id ? "Adding…" : "Add"}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {data && data.totalPages > 1 && (
+        <div className="flex justify-center items-center gap-2">
+          <button type="button" disabled={data.first} onClick={() => setPage((p) => p - 1)} className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-40 px-2 py-1 rounded border border-border">← Prev</button>
+          <span className="text-xs text-muted-foreground">{page + 1} / {data.totalPages}</span>
+          <button type="button" disabled={data.last} onClick={() => setPage((p) => p + 1)} className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-40 px-2 py-1 rounded border border-border">Next →</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function RoutineDetailDialog({
+  routine,
+  onClose,
+  onEdit,
+  onDelete,
+  onDuplicate,
+}: {
+  routine: RoutineResponse | null;
+  onClose: () => void;
+  onEdit?: () => void;
+  onDelete?: () => void;
+  onDuplicate?: () => void;
+}) {
+  const qc = useQueryClient();
   const [viewExercise, setViewExercise] = useState<ExerciseResponseType | null>(null);
+  const [addToProgramOpen, setAddToProgramOpen] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [copiedOk, setCopiedOk] = useState(false);
   const { data: muscleGroups = [] } = useQuery({
     queryKey: ["catalog", "muscles"],
     queryFn: catalogApi.listMuscleGroups,
     staleTime: 60_000,
     enabled: !!routine,
+  });
+
+  const isProgramRoutine = !!routine?.trainingProgramId;
+
+  const duplicateToMyRoutines = useMutation({
+    mutationFn: (r: RoutineResponse) => routineApi.create(toStandaloneRoutinePayload(r)),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["routines"] });
+      setActionError(null);
+      setCopiedOk(true);
+      window.setTimeout(() => setCopiedOk(false), 2500);
+    },
+    onError: (err) => {
+      setCopiedOk(false);
+      setActionError(getErrorMessage(err));
+    },
   });
 
   if (!routine) return null;
@@ -356,8 +577,102 @@ export function RoutineDetailDialog({ routine, onClose }: { routine: RoutineResp
 
   return (
     <>
-      <Dialog open={!!routine} onOpenChange={(v) => !v && onClose()}>
+      <Dialog
+        open={!!routine}
+        onOpenChange={(v) => {
+          if (!v) {
+            setAddToProgramOpen(false);
+            setActionError(null);
+            setCopiedOk(false);
+            onClose();
+          }
+        }}
+      >
       <DialogContent className="sm:max-w-4xl max-h-[90vh] flex flex-col overflow-hidden p-0">
+        <div className="absolute right-12 top-4 z-10">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8 opacity-70 hover:opacity-100">
+                <MoreVertical className="h-4 w-4" />
+                <span className="sr-only">Actions</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56 z-[60]">
+              {onEdit && (
+                <DropdownMenuItem
+                  onClick={() => {
+                    setAddToProgramOpen(false);
+                    onEdit();
+                  }}
+                >
+                  <Pencil className="h-4 w-4 mr-2" /> Edit
+                </DropdownMenuItem>
+              )}
+              {isProgramRoutine ? (
+                <DropdownMenuItem
+                  disabled={duplicateToMyRoutines.isPending}
+                  onClick={() => {
+                    setAddToProgramOpen(false);
+                    setActionError(null);
+                    duplicateToMyRoutines.mutate(routine);
+                  }}
+                >
+                  <Copy className="h-4 w-4 mr-2" />
+                  {duplicateToMyRoutines.isPending ? "Copying…" : "Duplicate to My Routines"}
+                </DropdownMenuItem>
+              ) : onDuplicate ? (
+                <DropdownMenuItem
+                  onClick={() => {
+                    setAddToProgramOpen(false);
+                    onDuplicate();
+                  }}
+                >
+                  <Copy className="h-4 w-4 mr-2" /> Duplicate
+                </DropdownMenuItem>
+              ) : null}
+              <DropdownMenuItem onClick={() => setAddToProgramOpen(true)}>
+                <FolderPlus className="h-4 w-4 mr-2" /> Add to program
+              </DropdownMenuItem>
+              {onDelete && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    className="text-destructive focus:text-destructive"
+                    onClick={onDelete}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" /> Delete
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+
+        {actionError && (
+          <div className="px-6 pt-2">
+            <ApiError message={actionError} />
+          </div>
+        )}
+        {copiedOk && (
+          <p className="px-6 pt-2 text-xs text-center text-emerald-400">
+            Copied to My Routines as “{routine.title} (copy)”
+          </p>
+        )}
+
+        {addToProgramOpen ? (
+          <>
+            <DialogHeader className="px-6 pt-5 pb-0 shrink-0 items-center text-center">
+              <DialogTitle className="text-xl font-bold">Add to program</DialogTitle>
+              <p className="text-sm text-muted-foreground mt-1 truncate max-w-full px-8">{routine.title}</p>
+            </DialogHeader>
+            <AddToProgramPicker
+              routine={routine}
+              onBack={() => setAddToProgramOpen(false)}
+              onDone={() => setAddToProgramOpen(false)}
+            />
+          </>
+        ) : (
+        <>
         <DialogHeader className="px-6 pt-5 pb-0 shrink-0 items-center text-center">
           <DialogTitle className="text-xl font-bold">{routine.title}</DialogTitle>
           <span className={cn("inline-flex items-center self-center px-3 py-1 rounded-full text-xs font-semibold border mt-2", LEVEL_COLOR[routine.level])}>
@@ -457,6 +772,8 @@ export function RoutineDetailDialog({ routine, onClose }: { routine: RoutineResp
             </TabsContent>
           </Tabs>
         </div>
+        </>
+        )}
       </DialogContent>
     </Dialog>
 

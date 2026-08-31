@@ -43,6 +43,7 @@ import { ApiError } from "@/components/ApiError";
 import { Spinner } from "@/components/Spinner";
 import {
   ChevronDown,
+  Copy,
   Dumbbell,
   GripVertical,
   ImagePlus,
@@ -1020,7 +1021,7 @@ function CopyRoutinePicker({
 
 // ── Helper: convert an existing RoutineResponse to a copyable RoutineEntry ────
 
-function routineToEntry(r: import("@/types/api").RoutineResponse): RoutineEntry {
+function routineToEntry(r: RoutineResponse): RoutineEntry {
   return {
     localId: crypto.randomUUID(),
     id: undefined,
@@ -1047,6 +1048,94 @@ function routineToEntry(r: import("@/types/api").RoutineResponse): RoutineEntry 
     activityIds: r.activities.map((a) => a.id),
     trainingGoalIds: r.trainingGoals.map((g) => g.id),
   };
+}
+
+// ── Duplicate program picker ──────────────────────────────────────────────────
+
+function DuplicateProgramPicker({
+  onSelect,
+  onBack,
+}: {
+  onSelect: (p: TrainingProgramResponse) => void;
+  onBack: () => void;
+}) {
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(0);
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["programs-duplicate-picker", page],
+    queryFn: () => programApi.list({}, page, 12),
+    staleTime: 30_000,
+  });
+
+  const programs = (data?.content ?? []).filter((p) =>
+    search ? p.title.toLowerCase().includes(search.toLowerCase()) : true
+  );
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={onBack}
+          className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0"
+        >
+          <ChevronDown className="h-4 w-4 rotate-90" /> Back
+        </button>
+        <Input
+          value={search}
+          onChange={(e) => { setSearch(e.target.value); setPage(0); }}
+          placeholder="Search your programs…"
+          className="h-8 text-sm flex-1"
+          autoFocus
+        />
+      </div>
+
+      <p className="text-xs text-muted-foreground">
+        Program data and all routines will be copied. Thumbnails need to be re-uploaded.
+      </p>
+
+      {isLoading ? (
+        <div className="flex justify-center py-6"><Spinner size="sm" label="" /></div>
+      ) : programs.length === 0 ? (
+        <p className="text-sm text-muted-foreground text-center py-6">No programs found.</p>
+      ) : (
+        <div className="space-y-1.5 overflow-y-auto max-h-[280px]">
+          {programs.map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              onClick={() => onSelect(p)}
+              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg border border-border hover:border-primary/60 hover:bg-accent/30 text-left transition-colors"
+            >
+              <div className="h-9 w-9 rounded-md bg-muted overflow-hidden shrink-0 flex items-center justify-center">
+                {p.thumbnail?.url ? (
+                  <img src={p.thumbnail.url} className="h-full w-full object-cover" alt="" />
+                ) : (
+                  <Layers className="h-4 w-4 text-muted-foreground" />
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate">{p.title}</p>
+                <p className="text-xs text-muted-foreground">
+                  {p.routines.length} routine{p.routines.length !== 1 ? "s" : ""} · {p.daysPerWeek}d/wk · {p.level[0] + p.level.slice(1).toLowerCase()}
+                </p>
+              </div>
+              <span className="text-xs text-primary font-medium shrink-0">Duplicate</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {data && data.totalPages > 1 && (
+        <div className="flex justify-center items-center gap-2">
+          <button type="button" disabled={data.first} onClick={() => setPage((p) => p - 1)} className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-40 px-2 py-1 rounded border border-border">← Prev</button>
+          <span className="text-xs text-muted-foreground">{page + 1} / {data.totalPages}</span>
+          <button type="button" disabled={data.last} onClick={() => setPage((p) => p + 1)} className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-40 px-2 py-1 rounded border border-border">Next →</button>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function RoutineEntryRow({
@@ -1109,10 +1198,13 @@ function RoutineEntryRow({
 export function ProgramDialog({
   open,
   editing,
+  seedFrom = null,
   onClose,
 }: {
   open: boolean;
   editing: TrainingProgramResponse | null;
+  /** When creating (not editing), preload form as a duplicate of this program. */
+  seedFrom?: TrainingProgramResponse | null;
   onClose: () => void;
 }) {
   const qc = useQueryClient();
@@ -1121,6 +1213,7 @@ export function ProgramDialog({
   const [subDialogOpen, setSubDialogOpen] = useState(false);
   const [editingEntry, setEditingEntry] = useState<RoutineEntry | null>(null);
   const [copyPickerOpen, setCopyPickerOpen] = useState(false);
+  const [duplicatePickerOpen, setDuplicatePickerOpen] = useState(false);
   const thumb = useThumbnailUpload();
 
   const { data: equipment = [] } = useQuery({ queryKey: ["catalog", "equipment"], queryFn: catalogApi.listEquipment, staleTime: 60_000 });
@@ -1171,10 +1264,10 @@ export function ProgramDialog({
 
   useEffect(() => {
     if (open) {
-      thumb.reset(editing?.thumbnail?.url ?? null);
       setServerError(null);
       setSubDialogOpen(false);
       setCopyPickerOpen(false);
+      setDuplicatePickerOpen(false);
       if (editing) {
         const sorted = [...editing.routines].sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
         setRoutineEntries(
@@ -1205,6 +1298,7 @@ export function ProgramDialog({
             trainingGoalIds: r.trainingGoals.map((g) => g.id),
           }))
         );
+        thumb.reset(editing.thumbnail?.url ?? null);
         reset({
           title: editing.title,
           level: editing.level,
@@ -1214,12 +1308,31 @@ export function ProgramDialog({
           activityIds: editing.activities.map((a) => a.id),
           trainingGoalIds: editing.trainingGoals.map((g) => g.id),
         });
+      } else if (seedFrom) {
+        handleDuplicateProgram(seedFrom);
       } else {
+        thumb.reset(null);
         setRoutineEntries([]);
         reset({ level: "INTERMEDIATE", daysPerWeek: 3, equipmentIds: [], activityIds: [], trainingGoalIds: [] });
       }
     }
-  }, [open, editing]);
+  }, [open, editing, seedFrom]);
+
+  const handleDuplicateProgram = (source: TrainingProgramResponse) => {
+    const sorted = [...source.routines].sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+    setRoutineEntries(sorted.map(routineToEntry));
+    thumb.reset(source.thumbnail?.url ?? null);
+    reset({
+      title: `${source.title} (copy)`,
+      level: source.level,
+      description: source.description ?? "",
+      daysPerWeek: source.daysPerWeek,
+      equipmentIds: source.equipment.map((e) => e.id),
+      activityIds: source.activities.map((a) => a.id),
+      trainingGoalIds: source.trainingGoals.map((g) => g.id),
+    });
+    setDuplicatePickerOpen(false);
+  };
 
   const handleRoutineSave = (entry: RoutineEntry) => {
     setRoutineEntries((prev) => {
@@ -1309,6 +1422,14 @@ export function ProgramDialog({
           <form onSubmit={handleSubmit((d) => mutation.mutate(d))} className="flex flex-col gap-0 overflow-hidden flex-1">
             {serverError && <ApiError message={serverError} className="mb-2" />}
 
+            {duplicatePickerOpen && !editing ? (
+              <div className="rounded-lg border border-primary/40 bg-card/50 p-4 min-h-[300px] mx-1 mb-2">
+                <DuplicateProgramPicker
+                  onSelect={handleDuplicateProgram}
+                  onBack={() => setDuplicatePickerOpen(false)}
+                />
+              </div>
+            ) : (
             <Tabs defaultValue="info" className="flex-1 overflow-hidden flex flex-col">
               <TabsList className="mx-auto">
                 <TabsTrigger value="info">Info</TabsTrigger>
@@ -1322,6 +1443,20 @@ export function ProgramDialog({
 
                 {/* ── Info tab ── */}
                 <TabsContent value="info" className="space-y-4 mt-4">
+                  {!editing && (
+                    <button
+                      type="button"
+                      onClick={() => setDuplicatePickerOpen(true)}
+                      className="w-full flex items-center justify-between px-4 py-2.5 rounded-lg border border-dashed border-primary/40 bg-primary/5 hover:bg-primary/10 transition-colors"
+                    >
+                      <span className="flex items-center gap-2 text-xs font-medium text-primary">
+                        <Copy className="h-3.5 w-3.5" />
+                        Duplicate an existing program
+                      </span>
+                      <ChevronDown className="h-4 w-4 text-primary -rotate-90" />
+                    </button>
+                  )}
+
                   <div className="grid grid-cols-3 gap-3">
                     <div className="col-span-2 space-y-1.5">
                       <Label>Title</Label>
@@ -1454,12 +1589,15 @@ export function ProgramDialog({
                 </TabsContent>
               </div>
             </Tabs>
+            )}
 
             <DialogFooter className="pt-2">
               <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-              <Button type="submit" disabled={mutation.isPending || thumb.uploading}>
-                {mutation.isPending ? <Spinner size="sm" label="" /> : editing ? "Save changes" : "Create program"}
-              </Button>
+              {!duplicatePickerOpen && (
+                <Button type="submit" disabled={mutation.isPending || thumb.uploading}>
+                  {mutation.isPending ? <Spinner size="sm" label="" /> : editing ? "Save changes" : "Create program"}
+                </Button>
+              )}
             </DialogFooter>
           </form>
         </DialogContent>
