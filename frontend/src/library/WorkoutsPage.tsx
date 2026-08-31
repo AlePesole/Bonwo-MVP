@@ -431,6 +431,20 @@ function ExercisesTab() {
       <ExerciseDetailDialog
         exercise={detailExercise}
         onClose={() => setDetailExercise(null)}
+        onEdit={() => {
+          if (!detailExercise) return;
+          const ex = detailExercise;
+          setDetailExercise(null);
+          setEditing(ex);
+          setDialogOpen(true);
+        }}
+        onDelete={() => {
+          if (!detailExercise) return;
+          if (!window.confirm(`Delete "${detailExercise.title}"?`)) return;
+          deleteMutation.mutate(detailExercise.id, {
+            onSuccess: () => setDetailExercise(null),
+          });
+        }}
       />
     </div>
   );

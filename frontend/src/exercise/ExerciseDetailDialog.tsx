@@ -1,13 +1,42 @@
 import { useMemo, useRef, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { catalogApi } from "@/catalog/api";
 import { BODY_DIAGRAMS } from "@/catalog/bodyDiagram";
+import { routineApi, type RoutinePayload } from "@/routine/api";
 import { cn } from "@/lib/utils";
-import type { ActivationLevel, ExerciseResponse, MuscleEntryResponse, MuscleGroupResponse, MuscleSubGroupResponse } from "@/types/api";
+import { getErrorMessage } from "@/lib/axios";
+import type {
+  ActivationLevel,
+  ExerciseResponse,
+  MuscleEntryResponse,
+  MuscleGroupResponse,
+  MuscleSubGroupResponse,
+  RoutineResponse,
+} from "@/types/api";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Layers, Play, Dumbbell } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { ApiError } from "@/components/ApiError";
+import { Spinner } from "@/components/Spinner";
+import {
+  ChevronDown,
+  FolderPlus,
+  Layers,
+  Play,
+  Dumbbell,
+  MoreVertical,
+  Pencil,
+  Trash2,
+} from "lucide-react";
 
 // ── Level badge ───────────────────────────────────────────────────────────────
 
@@ -434,13 +463,164 @@ function MuscleSummaryTab({
 
 
 
+function routineToUpdatePayload(r: RoutineResponse, extraExerciseId?: number): RoutinePayload {
+  const slots = r.slots.map((s, i) => ({
+    exerciseId: s.exerciseId,
+    position: s.position ?? i + 1,
+    restBetweenSets: s.restBetweenSets ?? undefined,
+    sets: s.sets.map((set) => ({
+      type: set.type,
+      reps: set.reps || undefined,
+      weightKg: set.weightKg ?? undefined,
+      weightMode: set.weightMode ?? "TOTAL",
+      duration: set.duration ?? undefined,
+    })),
+  }));
+
+  if (extraExerciseId != null) {
+    slots.push({
+      exerciseId: extraExerciseId,
+      position: slots.length + 1,
+      restBetweenSets: "PT1M",
+      sets: [{ type: "REPS", reps: 10, weightMode: "TOTAL", weightKg: undefined, duration: undefined }],
+    });
+  }
+
+  return {
+    title: r.title,
+    description: r.description ?? undefined,
+    level: r.level,
+    restBetweenExercises: r.restBetweenExercises,
+    slots,
+    equipmentIds: r.equipment.map((e) => e.id),
+    activityIds: r.activities.map((a) => a.id),
+    trainingGoalIds: r.trainingGoals.map((g) => g.id),
+  };
+}
+
+function AddToRoutinePicker({
+  exercise,
+  onBack,
+  onDone,
+}: {
+  exercise: ExerciseResponse;
+  onBack: () => void;
+  onDone: () => void;
+}) {
+  const qc = useQueryClient();
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["routines-add-exercise-picker", page],
+    queryFn: () => routineApi.list({}, page, 12),
+    staleTime: 30_000,
+  });
+
+  const routines = (data?.content ?? []).filter((r) =>
+    search ? r.title.toLowerCase().includes(search.toLowerCase()) : true
+  );
+
+  const mutation = useMutation({
+    mutationFn: (routine: RoutineResponse) =>
+      routineApi.update(routine.id, routineToUpdatePayload(routine, exercise.id)),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["routines"] });
+      onDone();
+    },
+    onError: (err) => setError(getErrorMessage(err)),
+  });
+
+  return (
+    <div className="space-y-3 px-6 py-4">
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={onBack}
+          disabled={mutation.isPending}
+          className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0"
+        >
+          <ChevronDown className="h-4 w-4 rotate-90" /> Back
+        </button>
+        <Input
+          value={search}
+          onChange={(e) => { setSearch(e.target.value); setPage(0); }}
+          placeholder="Search your routines…"
+          className="h-8 text-sm flex-1"
+          autoFocus
+        />
+      </div>
+
+      <p className="text-xs text-muted-foreground">
+        The exercise will be appended with a default 10-rep set. You can edit sets later.
+      </p>
+
+      {error && <ApiError message={error} />}
+
+      {isLoading ? (
+        <div className="flex justify-center py-6"><Spinner size="sm" label="" /></div>
+      ) : routines.length === 0 ? (
+        <p className="text-sm text-muted-foreground text-center py-6">No routines found.</p>
+      ) : (
+        <div className="space-y-1.5 overflow-y-auto max-h-[360px]">
+          {routines.map((r) => {
+            const alreadyIn = r.slots.some((s) => s.exerciseId === exercise.id);
+            return (
+              <button
+                key={r.id}
+                type="button"
+                disabled={mutation.isPending}
+                onClick={() => { setError(null); mutation.mutate(r); }}
+                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg border border-border hover:border-primary/60 hover:bg-accent/30 text-left transition-colors disabled:opacity-50"
+              >
+                <div className="h-9 w-9 rounded-md bg-muted overflow-hidden shrink-0 flex items-center justify-center">
+                  {r.thumbnail?.url ? (
+                    <img src={r.thumbnail.url} className="h-full w-full object-cover" alt="" />
+                  ) : (
+                    <Layers className="h-4 w-4 text-muted-foreground" />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{r.title}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {r.slots.length} exercise{r.slots.length !== 1 ? "s" : ""}
+                    {alreadyIn ? " · already includes this exercise" : ""}
+                  </p>
+                </div>
+                <span className="text-xs text-primary font-medium shrink-0">
+                  {mutation.isPending && mutation.variables?.id === r.id ? "Adding…" : "Add"}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {data && data.totalPages > 1 && (
+        <div className="flex justify-center items-center gap-2">
+          <button type="button" disabled={data.first} onClick={() => setPage((p) => p - 1)} className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-40 px-2 py-1 rounded border border-border">← Prev</button>
+          <span className="text-xs text-muted-foreground">{page + 1} / {data.totalPages}</span>
+          <button type="button" disabled={data.last} onClick={() => setPage((p) => p + 1)} className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-40 px-2 py-1 rounded border border-border">Next →</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function ExerciseDetailDialog({
   exercise,
   onClose,
+  onEdit,
+  onDelete,
 }: {
   exercise: ExerciseResponse | null;
   onClose: () => void;
+  onEdit?: () => void;
+  onDelete?: () => void;
 }) {
+  const [addToRoutineOpen, setAddToRoutineOpen] = useState(false);
+  const [addedOk, setAddedOk] = useState(false);
   const { data: muscleGroups = [] } = useQuery({
     queryKey: ["catalog", "muscles"],
     queryFn: catalogApi.listMuscleGroups,
@@ -451,16 +631,83 @@ export function ExerciseDetailDialog({
   if (!exercise) return null;
 
   return (
-    <Dialog open={!!exercise} onOpenChange={(v) => !v && onClose()}>
+    <Dialog
+      open={!!exercise}
+      onOpenChange={(v) => {
+        if (!v) {
+          setAddToRoutineOpen(false);
+          setAddedOk(false);
+          onClose();
+        }
+      }}
+    >
       <DialogContent className="sm:max-w-4xl max-h-[90vh] flex flex-col overflow-hidden p-0">
+        <div className="absolute right-12 top-4 z-10">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8 opacity-70 hover:opacity-100">
+                <MoreVertical className="h-4 w-4" />
+                <span className="sr-only">Actions</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-52 z-[60]">
+              {onEdit && (
+                <DropdownMenuItem
+                  onClick={() => {
+                    setAddToRoutineOpen(false);
+                    onEdit();
+                  }}
+                >
+                  <Pencil className="h-4 w-4 mr-2" /> Edit
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuItem onClick={() => { setAddedOk(false); setAddToRoutineOpen(true); }}>
+                <FolderPlus className="h-4 w-4 mr-2" /> Add to routine
+              </DropdownMenuItem>
+              {onDelete && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    className="text-destructive focus:text-destructive"
+                    onClick={onDelete}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" /> Delete
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+
+        {addToRoutineOpen ? (
+          <>
+            <DialogHeader className="px-6 pt-5 pb-0 shrink-0 items-center text-center">
+              <DialogTitle className="text-xl font-bold">Add to routine</DialogTitle>
+              <p className="text-sm text-muted-foreground mt-1 truncate max-w-full px-8">{exercise.title}</p>
+            </DialogHeader>
+            <AddToRoutinePicker
+              exercise={exercise}
+              onBack={() => setAddToRoutineOpen(false)}
+              onDone={() => {
+                setAddToRoutineOpen(false);
+                setAddedOk(true);
+                window.setTimeout(() => setAddedOk(false), 2500);
+              }}
+            />
+          </>
+        ) : (
+        <>
         <DialogHeader className="px-6 pt-5 pb-0 shrink-0 items-center text-center">
           <DialogTitle className="text-xl font-bold">{exercise.title}</DialogTitle>
           <span className={cn(
-            "inline-flex items-center self-start px-3 py-1 rounded-full text-xs font-semibold border mt-2",
+            "inline-flex items-center self-center px-3 py-1 rounded-full text-xs font-semibold border mt-2",
             LEVEL_COLOR[exercise.level]
           )}>
             {LEVEL_LABEL[exercise.level]}
           </span>
+          {addedOk && (
+            <p className="text-xs text-emerald-400 mt-2">Added to routine</p>
+          )}
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto px-6 pb-6">
@@ -534,6 +781,8 @@ export function ExerciseDetailDialog({
             </TabsContent>
           </Tabs>
         </div>
+        </>
+        )}
       </DialogContent>
     </Dialog>
   );

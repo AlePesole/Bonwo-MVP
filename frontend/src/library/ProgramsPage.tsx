@@ -197,6 +197,7 @@ function ProgramsTab() {
   const [filterOpen, setFilterOpen] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<TrainingProgramResponse | null>(null);
+  const [seedFrom, setSeedFrom] = useState<TrainingProgramResponse | null>(null);
   const [detailProgram, setDetailProgram] = useState<TrainingProgramResponse | null>(null);
 
   const { data: muscleGroups = [] } = useQuery({
@@ -248,7 +249,7 @@ function ProgramsTab() {
           </Button>
         )}
         <div className="flex-1" />
-        <Button size="sm" className="gap-1.5" onClick={() => { setEditing(null); setDialogOpen(true); }}>
+        <Button size="sm" className="gap-1.5" onClick={() => { setEditing(null); setSeedFrom(null); setDialogOpen(true); }}>
           <Plus className="h-4 w-4" /> New Program
         </Button>
       </div>
@@ -274,7 +275,7 @@ function ProgramsTab() {
                   program={program}
                   muscleGroupMap={muscleGroupMap}
                   onView={() => setDetailProgram(program)}
-                  onEdit={() => { setEditing(program); setDialogOpen(true); }}
+                  onEdit={() => { setSeedFrom(null); setEditing(program); setDialogOpen(true); }}
                   onDelete={() => window.confirm(`Delete "${program.title}"?`) && deleteMutation.mutate(program.id)}
                 />
               ))}
@@ -291,8 +292,39 @@ function ProgramsTab() {
         </>
       )}
 
-      <ProgramDialog open={dialogOpen} editing={editing} onClose={() => setDialogOpen(false)} />
-      <ProgramDetailDialog program={detailProgram} onClose={() => setDetailProgram(null)} />
+      <ProgramDialog
+        open={dialogOpen}
+        editing={editing}
+        seedFrom={seedFrom}
+        onClose={() => { setDialogOpen(false); setSeedFrom(null); }}
+      />
+      <ProgramDetailDialog
+        program={detailProgram}
+        onClose={() => setDetailProgram(null)}
+        onEdit={() => {
+          if (!detailProgram) return;
+          const p = detailProgram;
+          setDetailProgram(null);
+          setSeedFrom(null);
+          setEditing(p);
+          setDialogOpen(true);
+        }}
+        onDuplicate={() => {
+          if (!detailProgram) return;
+          const p = detailProgram;
+          setDetailProgram(null);
+          setEditing(null);
+          setSeedFrom(p);
+          setDialogOpen(true);
+        }}
+        onDelete={() => {
+          if (!detailProgram) return;
+          if (!window.confirm(`Delete "${detailProgram.title}"?`)) return;
+          deleteMutation.mutate(detailProgram.id, {
+            onSuccess: () => setDetailProgram(null),
+          });
+        }}
+      />
     </div>
   );
 }
