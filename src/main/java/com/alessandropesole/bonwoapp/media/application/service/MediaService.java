@@ -17,6 +17,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 
 /**
  * Handles video and image upload/delete.
@@ -175,6 +177,16 @@ public class MediaService {
         var expired = imageRepository.findAllExpiredPending();
         expired.forEach(this::deleteImageInternal);
         return expired.size();
+    }
+
+    /**
+     * Deletes ACTIVE images no longer referenced by any Exercise/Routine/TrainingProgram thumbnail
+     */
+    public int deleteOrphanedImages() {
+        var threshold = Instant.now().minus(mediaProperties.orphanGraceHours(), ChronoUnit.HOURS);
+        var orphaned = imageRepository.findAllOrphaned(threshold);
+        orphaned.forEach(this::deleteImageInternal);
+        return orphaned.size();
     }
 
     private void deleteVideoInternal(Video v) {

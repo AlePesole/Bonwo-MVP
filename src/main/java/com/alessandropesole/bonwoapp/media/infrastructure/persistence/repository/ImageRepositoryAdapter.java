@@ -42,6 +42,11 @@ public class ImageRepositoryAdapter implements ImageRepository {
     }
 
     @Override
+    public List<Image> findAllOrphaned(Instant createdBefore) {
+        return jpa.findAllOrphaned(createdBefore).stream().map(MediaPersistenceMapper::toDomain).toList();
+    }
+
+    @Override
     public void deleteById(Long id) {
         jpa.deleteById(id);
     }
