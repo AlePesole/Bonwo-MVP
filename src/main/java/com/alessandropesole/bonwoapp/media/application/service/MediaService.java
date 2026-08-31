@@ -124,6 +124,17 @@ public class MediaService {
     }
 
     /**
+     * Verifies an already-active image belongs to ownerId — used when a request references an existing
+     * image by id directly (e.g. duplicating another owned entity's thumbnail) rather than uploading a
+     * new one. Unlike claimImage, this doesn't activate/mutate anything, just asserts ownership.
+     */
+    public void verifyImageOwnership(Long imageId, Long ownerId) {
+        Image image = imageRepository.findById(imageId)
+                .orElseThrow(() -> new ResourceNotFoundException("Image", imageId));
+        if (!image.isOwnedBy(ownerId)) throw new MediaNotOwnedException();
+    }
+
+    /**
      * Deletes a video from MediaStorage and BD.
      * Only deletes if ownerId matches — silently skips if not owner or not found.
      * Called when an entity is deleted or its mainVideoId is replaced.

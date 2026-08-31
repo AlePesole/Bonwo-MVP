@@ -64,7 +64,7 @@ class TrainingProgramServiceTest {
     private static final Long PROGRAM_ID = 10L;
 
     private static ProgramRoutineDto routineDto(Long id, int position) {
-        return new ProgramRoutineDto(id, "Push Day", null, Level.INTERMEDIATE, null, false,
+        return new ProgramRoutineDto(id, "Push Day", null, Level.INTERMEDIATE, null, null, false,
                 position, List.of(), null, Set.of(), Set.of(), Set.of());
     }
 
@@ -83,7 +83,7 @@ class TrainingProgramServiceTest {
     @Test
     void create_savesProgramAndCreatesEachRoutineAttachedToIt() {
         CreateTrainingProgramRequest req = new CreateTrainingProgramRequest(
-                "8 Week Program", null, Level.INTERMEDIATE, null, 3,
+                "8 Week Program", null, Level.INTERMEDIATE, null, null, 3,
                 List.of(routineDto(null, 1)), Set.of(), Set.of(), Set.of());
         when(trainingProgramRepository.save(any(TrainingProgram.class))).thenAnswer(inv -> {
             TrainingProgram p = inv.getArgument(0);
@@ -106,7 +106,7 @@ class TrainingProgramServiceTest {
     @Test
     void create_rejectsDuplicatePositionsAmongRoutines() {
         CreateTrainingProgramRequest req = new CreateTrainingProgramRequest(
-                "Program", null, Level.INTERMEDIATE, null, 3,
+                "Program", null, Level.INTERMEDIATE, null, null, 3,
                 List.of(routineDto(null, 1), routineDto(null, 1)), Set.of(), Set.of(), Set.of());
 
         assertThatThrownBy(() -> trainingProgramService.create(req, OWNER_ID))
@@ -117,7 +117,7 @@ class TrainingProgramServiceTest {
     @Test
     void create_claimsThumbnailWhenTokenProvided() {
         CreateTrainingProgramRequest req = new CreateTrainingProgramRequest(
-                "Program", null, Level.INTERMEDIATE, "thumb-token", 3,
+                "Program", null, Level.INTERMEDIATE, "thumb-token", null, 3,
                 List.of(), Set.of(), Set.of(), Set.of());
         when(mediaService.claimImage("thumb-token", OWNER_ID)).thenReturn(20L);
         when(trainingProgramRepository.save(any(TrainingProgram.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -126,6 +126,35 @@ class TrainingProgramServiceTest {
         trainingProgramService.create(req, OWNER_ID);
 
         verify(mediaService).claimImage("thumb-token", OWNER_ID);
+    }
+
+    @Test
+    void create_reusesExistingOwnedThumbnailIdWithoutClaimingAnUpload() {
+        CreateTrainingProgramRequest req = new CreateTrainingProgramRequest(
+                "Program Copy", null, Level.INTERMEDIATE, null, 77L, 3,
+                List.of(), Set.of(), Set.of(), Set.of());
+        when(trainingProgramRepository.save(any(TrainingProgram.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(muscleSummaryCalculator.aggregate(anyList())).thenReturn(MuscleSummary.empty());
+
+        trainingProgramService.create(req, OWNER_ID);
+
+        verify(mediaService).verifyImageOwnership(77L, OWNER_ID);
+        verify(mediaService, never()).claimImage(any(), any());
+    }
+
+    @Test
+    void create_prefersUploadTokenOverThumbnailIdWhenBothProvided() {
+        CreateTrainingProgramRequest req = new CreateTrainingProgramRequest(
+                "Program Copy", null, Level.INTERMEDIATE, "fresh-token", 77L, 3,
+                List.of(), Set.of(), Set.of(), Set.of());
+        when(mediaService.claimImage("fresh-token", OWNER_ID)).thenReturn(200L);
+        when(trainingProgramRepository.save(any(TrainingProgram.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(muscleSummaryCalculator.aggregate(anyList())).thenReturn(MuscleSummary.empty());
+
+        trainingProgramService.create(req, OWNER_ID);
+
+        verify(mediaService).claimImage("fresh-token", OWNER_ID);
+        verify(mediaService, never()).verifyImageOwnership(any(), any());
     }
 
     @Test
@@ -147,7 +176,7 @@ class TrainingProgramServiceTest {
     }
 
     @Test
-    void update_removesThumbnailAndDeletesOldImageWhenRequested() {
+    void update_removesThumbnailWithoutPhysicallyDeletingTheImage() {
         TrainingProgram program = TrainingProgram.reconstitute(PROGRAM_ID, OWNER_ID, "Program", null,
                 Level.INTERMEDIATE, 50L, 3, MuscleSummary.empty(), Set.of(), Set.of(), Set.of(), null);
         when(trainingProgramRepository.findById(PROGRAM_ID)).thenReturn(Optional.of(program));
@@ -159,7 +188,7 @@ class TrainingProgramServiceTest {
         TrainingProgramResponse response = trainingProgramService.update(PROGRAM_ID, req, OWNER_ID);
 
         assertThat(response.thumbnail()).isNull();
-        verify(mediaService).deleteImageIfOwner(50L, OWNER_ID);
+        verify(mediaService, never()).deleteImageIfOwner(any(), any());
     }
 
     @Test
@@ -206,7 +235,7 @@ class TrainingProgramServiceTest {
     }
 
     @Test
-    void delete_deletesThumbnailAndEveryOwnedRoutineThenTheProgram() {
+    void delete_deletesEveryOwnedRoutineThenTheProgramWithoutTouchingThumbnailImage() {
         TrainingProgram program = TrainingProgram.reconstitute(PROGRAM_ID, OWNER_ID, "Program", null,
                 Level.INTERMEDIATE, 50L, 3, MuscleSummary.empty(), Set.of(), Set.of(), Set.of(), null);
         when(trainingProgramRepository.findById(PROGRAM_ID)).thenReturn(Optional.of(program));
@@ -215,7 +244,7 @@ class TrainingProgramServiceTest {
 
         trainingProgramService.delete(PROGRAM_ID, OWNER_ID);
 
-        verify(mediaService).deleteImageIfOwner(50L, OWNER_ID);
+        verify(mediaService, never()).deleteImageIfOwner(any(), any());
         verify(routineUseCase).delete(1L, OWNER_ID);
         verify(routineUseCase).delete(2L, OWNER_ID);
         verify(trainingProgramRepository).deleteById(PROGRAM_ID);

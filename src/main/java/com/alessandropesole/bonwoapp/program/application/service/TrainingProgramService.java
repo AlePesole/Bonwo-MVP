@@ -64,8 +64,7 @@ public class TrainingProgramService implements TrainingProgramUseCase {
         catalogValidator.validate(req.equipmentIds(), req.activityIds(), req.trainingGoalIds());
         validateNoDuplicatePositions(req.routines());
 
-        Long thumbnailId = req.thumbnailUploadToken() != null
-                ? mediaService.claimImage(req.thumbnailUploadToken(), ownerId) : null;
+        Long thumbnailId = resolveNewThumbnailId(req.thumbnailUploadToken(), req.thumbnailId(), ownerId);
 
         TrainingProgram program = TrainingProgram.create(
                 ownerId, req.title(), req.description(), req.level(), thumbnailId,
@@ -101,7 +100,6 @@ public class TrainingProgramService implements TrainingProgramUseCase {
                     req.trainingGoalIds() != null ? req.trainingGoalIds() : program.getTrainingGoalIds());
         }
 
-        Long oldThumbnailId = program.getThumbnailId();
         Long newThumbnailId = req.thumbnailUploadToken() != null
                 ? mediaService.claimImage(req.thumbnailUploadToken(), ownerId) : null;
 
@@ -112,9 +110,6 @@ public class TrainingProgramService implements TrainingProgramUseCase {
                 req.equipmentIds(), req.activityIds(), req.trainingGoalIds()
         );
         TrainingProgram saved = trainingProgramRepository.save(program);
-
-        if (newThumbnailId != null || req.removeThumbnail())
-            mediaService.deleteImageIfOwner(oldThumbnailId, ownerId);
 
         List<RoutineResponse> routines;
         if (req.routines() != null) {
@@ -131,8 +126,7 @@ public class TrainingProgramService implements TrainingProgramUseCase {
 
     @Override
     public void delete(Long id, Long ownerId) {
-        TrainingProgram program = findOwned(id, ownerId);
-        mediaService.deleteImageIfOwner(program.getThumbnailId(), ownerId);
+        findOwned(id, ownerId);
         routineRepository.findByTrainingProgramId(id).forEach(r -> routineUseCase.delete(r.getId(), ownerId));
         trainingProgramRepository.deleteById(id);
     }
@@ -147,7 +141,7 @@ public class TrainingProgramService implements TrainingProgramUseCase {
 
     private RoutineResponse createProgramRoutine(ProgramRoutineDto dto, Long trainingProgramId, Long ownerId) {
         CreateRoutineRequest routineReq = new CreateRoutineRequest(
-                dto.title(), dto.description(), dto.level(), dto.thumbnailUploadToken(),
+                dto.title(), dto.description(), dto.level(), dto.thumbnailUploadToken(), dto.thumbnailId(),
                 dto.slots(), dto.restBetweenExercises(),
                 dto.equipmentIds(), dto.activityIds(), dto.trainingGoalIds());
         return routineUseCase.create(routineReq, ownerId, trainingProgramId, dto.position());
@@ -191,6 +185,23 @@ public class TrainingProgramService implements TrainingProgramUseCase {
                 .sorted(Comparator.comparing(r -> r.getPosition() != null ? r.getPosition() : 0))
                 .map(r -> routineUseCase.getById(r.getId(), ownerId))
                 .toList();
+    }
+
+    /**
+     * A fresh upload always wins. Otherwise, an explicit thumbnailId is used as-is after verifying
+     * ownership — this is how duplicating a program can point at the source's existing image without
+     * re-uploading it (safe since removing a thumbnail only clears the reference, never deletes the
+     * underlying image — see TrainingProgramService.update). Same logic as RoutineService's own
+     * resolveNewThumbnailId — duplicated rather than shared, consistent with how every service here
+     * resolves its own thumbnail handling directly against MediaService.
+     */
+    private Long resolveNewThumbnailId(String thumbnailUploadToken, Long thumbnailId, Long ownerId) {
+        if (thumbnailUploadToken != null) return mediaService.claimImage(thumbnailUploadToken, ownerId);
+        if (thumbnailId != null) {
+            mediaService.verifyImageOwnership(thumbnailId, ownerId);
+            return thumbnailId;
+        }
+        return null;
     }
 
     private MuscleSummary aggregateMuscleSummary(List<RoutineResponse> routines) {

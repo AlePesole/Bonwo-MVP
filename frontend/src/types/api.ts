@@ -189,6 +189,8 @@ export interface ProgramRoutineDto {
   description?: string | null;
   level: Level;
   thumbnailUploadToken?: string;
+  /** Reuse an owned image when creating a copied routine; ignored if thumbnailUploadToken is set. */
+  thumbnailId?: number;
   removeThumbnail?: boolean;
   position: number;
   restBetweenExercises?: string | null;

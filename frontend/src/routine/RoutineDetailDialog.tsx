@@ -374,6 +374,7 @@ function toProgramRoutineDto(r: RoutineResponse, position: number, keepId: boole
     title: r.title,
     description: r.description ?? undefined,
     level: r.level,
+    ...(!keepId && r.thumbnail?.id ? { thumbnailId: r.thumbnail.id } : {}),
     removeThumbnail: false,
     position,
     restBetweenExercises: r.restBetweenExercises,
@@ -401,6 +402,7 @@ function toStandaloneRoutinePayload(r: RoutineResponse): RoutinePayload {
     title: `${r.title} (copy)`,
     description: r.description ?? undefined,
     level: r.level,
+    thumbnailId: r.thumbnail?.id,
     restBetweenExercises: r.restBetweenExercises,
     slots: r.slots.map((s, i) => ({
       exerciseId: s.exerciseId,

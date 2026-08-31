@@ -712,7 +712,7 @@ function DuplicateRoutinePicker({
       </div>
 
       <p className="text-xs text-muted-foreground">
-        All data (exercises, sets, details) will be copied. Thumbnail needs to be re-uploaded.
+        All data (exercises, sets, details, thumbnail) will be copied. You can change the thumbnail before saving.
       </p>
 
       {isLoading ? (
@@ -777,6 +777,8 @@ export function RoutineDialog({
   const [pickerSlotIndex, setPickerSlotIndex] = useState<number | null>(null);
   const [expandedSlot, setExpandedSlot] = useState<number | null>(0);
   const [duplicatePickerOpen, setDuplicatePickerOpen] = useState(false);
+  /** When duplicating, reuse this owned image id unless the user uploads/removes. */
+  const [sourceThumbnailId, setSourceThumbnailId] = useState<number | undefined>();
   const thumb = useThumbnailUpload();
 
   const { data: equipment = [] } = useQuery({ queryKey: ["catalog", "equipment"], queryFn: catalogApi.listEquipment, staleTime: 60_000 });
@@ -838,15 +840,15 @@ export function RoutineDialog({
     ]).size;
   }, [resolvedExercises, slotsWatched]);
 
-  const applyRoutineData = (source: RoutineResponse, titleSuffix = "") => {
+  const applyRoutineData = (source: RoutineResponse, opts?: { copy?: boolean }) => {
     const resolved = source.slots
       .map((s) => s.exercise)
       .filter((e): e is ExerciseResponse => e != null);
     setResolvedExercises(resolved);
-    // Preview only — backend can't reuse an existing thumbnailId without a new upload token
     thumb.reset(source.thumbnail?.url ?? null);
+    setSourceThumbnailId(opts?.copy ? source.thumbnail?.id : undefined);
     reset({
-      title: `${source.title}${titleSuffix}`,
+      title: opts?.copy ? `${source.title} (copy)` : source.title,
       level: source.level,
       description: source.description ?? "",
       restBetweenExercisesSecs: parseDuration(source.restBetweenExercises),
@@ -875,10 +877,11 @@ export function RoutineDialog({
       if (editing) {
         applyRoutineData(editing);
       } else if (seedFrom) {
-        applyRoutineData(seedFrom, " (copy)");
+        applyRoutineData(seedFrom, { copy: true });
         setExpandedSlot(0);
       } else {
         thumb.reset(null);
+        setSourceThumbnailId(undefined);
         setResolvedExercises([]);
         reset({ level: "INTERMEDIATE", slots: [], equipmentIds: [], activityIds: [], trainingGoalIds: [] });
       }
@@ -886,7 +889,7 @@ export function RoutineDialog({
   }, [open, editing, seedFrom]);
 
   const handleDuplicate = (source: RoutineResponse) => {
-    applyRoutineData(source, " (copy)");
+    applyRoutineData(source, { copy: true });
     setDuplicatePickerOpen(false);
     setExpandedSlot(0);
   };
@@ -898,6 +901,8 @@ export function RoutineDialog({
         level: data.level,
         description: data.description || undefined,
         thumbnailUploadToken: thumb.token,
+        thumbnailId:
+          !editing && !thumb.token && !thumb.removed ? sourceThumbnailId : undefined,
         removeThumbnail: thumb.removed,
         restBetweenExercises: formatDuration(data.restBetweenExercisesSecs ?? 0),
         slots: (data.slots ?? []).map((s, i) => ({
@@ -1021,10 +1026,10 @@ export function RoutineDialog({
                       {thumb.token && <span className="text-primary ml-1">(ready)</span>}
                     </p>
                     {thumb.preview && !thumb.uploading && (
-                      <button type="button" onClick={thumb.remove} className="text-xs text-destructive hover:underline text-left">Remove</button>
+                      <button type="button" onClick={() => { setSourceThumbnailId(undefined); thumb.remove(); }} className="text-xs text-destructive hover:underline text-left">Remove</button>
                     )}
                   </div>
-                  <input ref={thumb.fileRef} type="file" accept="image/*" className="hidden" onChange={thumb.handleFile} />
+                  <input ref={thumb.fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => { setSourceThumbnailId(undefined); void thumb.handleFile(e); }} />
                 </div>
                 {thumb.error && <p className="text-xs text-destructive">{thumb.error}</p>}
               </div>

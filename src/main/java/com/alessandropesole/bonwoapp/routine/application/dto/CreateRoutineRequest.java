@@ -14,6 +14,7 @@ public record CreateRoutineRequest(
         String description,
         Level level,
         String thumbnailUploadToken,
+        Long thumbnailId,   // used to duplicate an existing owned image's reference instead of re-uploading; ignored if thumbnailUploadToken is also present
         @Valid List<ExerciseSlotDto> slots,
         Duration restBetweenExercises,
         Set<Long> equipmentIds,

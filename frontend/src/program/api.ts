@@ -12,6 +12,8 @@ export interface ProgramPayload {
   description?: string;
   level?: string;
   thumbnailUploadToken?: string;
+  /** Reuse an owned image on create/duplicate; ignored if thumbnailUploadToken is set. */
+  thumbnailId?: number;
   removeThumbnail?: boolean;
   daysPerWeek?: number;
   routines?: ProgramRoutineDto[];
