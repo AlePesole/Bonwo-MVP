@@ -113,7 +113,7 @@ class ExerciseServiceTest {
     }
 
     @Test
-    void update_removesThumbnailAndDeletesOldImageWhenRequested() {
+void update_removesThumbnailWithoutPhysicallyDeletingTheImage() {
         Exercise exercise = Exercise.reconstitute(1L, OWNER_ID, "Bench Press", Level.INTERMEDIATE,
                 50L, null, null, null, List.of(), null, Set.of(), Set.of(), Set.of(), null);
         when(exerciseRepository.findById(1L)).thenReturn(Optional.of(exercise));
@@ -124,7 +124,7 @@ class ExerciseServiceTest {
         ExerciseResponse response = exerciseService.update(1L, req, OWNER_ID);
 
         assertThat(response.thumbnail()).isNull();
-        verify(mediaService).deleteImageIfOwner(50L, OWNER_ID);
+        verify(mediaService, never()).deleteImageIfOwner(any(), any());
     }
 
     @Test
@@ -154,15 +154,15 @@ class ExerciseServiceTest {
     }
 
     @Test
-    void delete_deletesMediaAndExercise() {
+    void delete_deletesVideoButNotThumbnailImage() {
         Exercise exercise = Exercise.reconstitute(1L, OWNER_ID, "Bench Press", Level.INTERMEDIATE,
                 50L, 60L, null, null, List.of(), null, Set.of(), Set.of(), Set.of(), null);
         when(exerciseRepository.findById(1L)).thenReturn(Optional.of(exercise));
 
         exerciseService.delete(1L, OWNER_ID);
 
-        verify(mediaService).deleteImageIfOwner(50L, OWNER_ID);
         verify(mediaService).deleteVideoIfOwner(60L, OWNER_ID);
+        verify(mediaService, never()).deleteImageIfOwner(any(), any());
         verify(exerciseRepository).deleteById(1L);
     }
 

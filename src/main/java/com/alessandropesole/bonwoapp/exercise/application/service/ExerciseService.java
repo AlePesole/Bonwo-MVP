@@ -98,7 +98,6 @@ public class ExerciseService implements ExerciseUseCase {
         MuscleSummary newMuscleSummary = newMuscles != null
                 ? muscleSummaryCalculator.calculate(newMuscles) : null;
 
-        Long oldThumbnailId = exercise.getThumbnailId();
         Long oldMainVideoId = exercise.getMainVideoId();
 
         Long newThumbnailId = req.thumbnailUploadToken() != null
@@ -116,8 +115,6 @@ public class ExerciseService implements ExerciseUseCase {
         );
         Exercise saved = exerciseRepository.save(exercise);
 
-        if (newThumbnailId != null || req.removeThumbnail())
-            mediaService.deleteImageIfOwner(oldThumbnailId, ownerId);
         if (newMainVideoId != null || req.removeMainVideo())
             mediaService.deleteVideoIfOwner(oldMainVideoId, ownerId);
 
@@ -128,7 +125,6 @@ public class ExerciseService implements ExerciseUseCase {
     public void delete(Long id, Long ownerId) {
         Exercise exercise = findOwned(id, ownerId);
         mediaService.deleteVideoIfOwner(exercise.getMainVideoId(), ownerId);
-        mediaService.deleteImageIfOwner(exercise.getThumbnailId(), ownerId);
         exerciseRepository.deleteById(id);
     }
 

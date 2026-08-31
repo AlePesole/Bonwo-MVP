@@ -2,6 +2,7 @@ package com.alessandropesole.bonwoapp.media.domain.port.out;
 
 import com.alessandropesole.bonwoapp.media.domain.model.Image;
 
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -16,6 +17,8 @@ public interface ImageRepository {
     List<Image> findAllById(Collection<Long> ids);
 
     List<Image> findAllExpiredPending();
+
+    List<Image> findAllOrphaned(Instant createdBefore);
 
     void deleteById(Long id);
 }

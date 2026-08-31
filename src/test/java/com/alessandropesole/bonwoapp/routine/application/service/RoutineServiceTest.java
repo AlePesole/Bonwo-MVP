@@ -13,6 +13,7 @@ import com.alessandropesole.bonwoapp.exercise.domain.port.in.ExerciseUseCase;
 import com.alessandropesole.bonwoapp.exercise.domain.port.out.ExerciseRepository;
 import com.alessandropesole.bonwoapp.media.application.service.MediaResolver;
 import com.alessandropesole.bonwoapp.media.application.service.MediaService;
+import com.alessandropesole.bonwoapp.media.domain.exception.MediaNotOwnedException;
 import com.alessandropesole.bonwoapp.routine.application.dto.CreateRoutineRequest;
 import com.alessandropesole.bonwoapp.routine.application.dto.ExerciseSlotDto;
 import com.alessandropesole.bonwoapp.routine.application.dto.RoutineResponse;
@@ -36,6 +37,7 @@ import java.util.Optional;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.*;
@@ -72,7 +74,7 @@ class RoutineServiceTest {
 
     @Test
     void create_aggregatesMuscleSummaryFromExistingOwnedExercise() {
-        CreateRoutineRequest req = new CreateRoutineRequest("Push Day", null, Level.INTERMEDIATE, null,
+        CreateRoutineRequest req = new CreateRoutineRequest("Push Day", null, Level.INTERMEDIATE, null, null,
                 List.of(new ExerciseSlotDto(EXERCISE_ID, 1,
                         List.of(new SetConfigDto(SetType.REPS, 10, null, null, null)), null)),
                 null, Set.of(), Set.of(), Set.of());
@@ -91,7 +93,7 @@ class RoutineServiceTest {
 
     @Test
     void create_skipsDeletedExerciseWhenAggregatingMuscleSummary() {
-        CreateRoutineRequest req = new CreateRoutineRequest("Push Day", null, Level.INTERMEDIATE, null,
+        CreateRoutineRequest req = new CreateRoutineRequest("Push Day", null, Level.INTERMEDIATE, null, null,
                 List.of(new ExerciseSlotDto(EXERCISE_ID, 1,
                         List.of(new SetConfigDto(SetType.REPS, 10, null, null, null)), null)),
                 null, Set.of(), Set.of(), Set.of());
@@ -105,6 +107,57 @@ class RoutineServiceTest {
         verify(muscleSummaryCalculator).aggregate(captor.capture());
         assertThat(captor.getValue()).isEmpty();
         verify(exerciseUseCase, never()).getById(any(), any());
+    }
+
+    @Test
+    void create_reusesExistingOwnedThumbnailIdWithoutClaimingAnUpload() {
+        CreateRoutineRequest req = new CreateRoutineRequest("Push Day Copy", null, Level.INTERMEDIATE,
+                null, 99L,
+                List.of(new ExerciseSlotDto(EXERCISE_ID, 1,
+                        List.of(new SetConfigDto(SetType.REPS, 10, null, null, null)), null)),
+                null, Set.of(), Set.of(), Set.of());
+        when(exerciseRepository.findById(EXERCISE_ID)).thenReturn(Optional.empty());
+        when(muscleSummaryCalculator.aggregate(anyList())).thenReturn(MuscleSummary.empty());
+        when(routineRepository.save(any(Routine.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        routineService.create(req, OWNER_ID);
+
+        verify(mediaService).verifyImageOwnership(99L, OWNER_ID);
+        verify(mediaService, never()).claimImage(any(), any());
+    }
+
+    @Test
+    void create_prefersUploadTokenOverThumbnailIdWhenBothProvided() {
+        CreateRoutineRequest req = new CreateRoutineRequest("Push Day Copy", null, Level.INTERMEDIATE,
+                "fresh-token", 99L,
+                List.of(new ExerciseSlotDto(EXERCISE_ID, 1,
+                        List.of(new SetConfigDto(SetType.REPS, 10, null, null, null)), null)),
+                null, Set.of(), Set.of(), Set.of());
+        when(exerciseRepository.findById(EXERCISE_ID)).thenReturn(Optional.empty());
+        when(muscleSummaryCalculator.aggregate(anyList())).thenReturn(MuscleSummary.empty());
+        when(mediaService.claimImage("fresh-token", OWNER_ID)).thenReturn(200L);
+        when(routineRepository.save(any(Routine.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        routineService.create(req, OWNER_ID);
+
+        verify(mediaService).claimImage("fresh-token", OWNER_ID);
+        verify(mediaService, never()).verifyImageOwnership(any(), any());
+    }
+
+    @Test
+    void create_rejectsThumbnailIdNotOwnedByCaller() {
+        CreateRoutineRequest req = new CreateRoutineRequest("Push Day Copy", null, Level.INTERMEDIATE,
+                null, 99L,
+                List.of(new ExerciseSlotDto(EXERCISE_ID, 1,
+                        List.of(new SetConfigDto(SetType.REPS, 10, null, null, null)), null)),
+                null, Set.of(), Set.of(), Set.of());
+        when(exerciseRepository.findById(EXERCISE_ID)).thenReturn(Optional.empty());
+        when(muscleSummaryCalculator.aggregate(anyList())).thenReturn(MuscleSummary.empty());
+        doThrow(new MediaNotOwnedException()).when(mediaService).verifyImageOwnership(99L, OWNER_ID);
+
+        assertThatThrownBy(() -> routineService.create(req, OWNER_ID))
+                .isInstanceOf(MediaNotOwnedException.class);
+        verify(routineRepository, never()).save(any());
     }
 
     @Test

@@ -67,8 +67,7 @@ public class RoutineService implements RoutineUseCase {
         List<ExerciseSlot> slots = ExerciseSlotDtoMapper.toDomainList(req.slots());
         MuscleSummary muscleSummary = resolveAndAggregateMuscleSummary(slots, ownerId);
 
-        Long thumbnailId = req.thumbnailUploadToken() != null
-                ? mediaService.claimImage(req.thumbnailUploadToken(), ownerId) : null;
+        Long thumbnailId = resolveNewThumbnailId(req.thumbnailUploadToken(), req.thumbnailId(), ownerId);
 
         Routine routine = Routine.create(
                 ownerId, req.title(), req.description(), req.level(), thumbnailId,
@@ -109,9 +108,8 @@ public class RoutineService implements RoutineUseCase {
         MuscleSummary newMuscleSummary = newSlots != null
                 ? resolveAndAggregateMuscleSummary(newSlots, ownerId) : null;
 
-        Long oldThumbnailId = routine.getThumbnailId();
         Long newThumbnailId = req.thumbnailUploadToken() != null
-                ? mediaService.claimImage(req.thumbnailUploadToken(), ownerId) : null;
+            ? mediaService.claimImage(req.thumbnailUploadToken(), ownerId) : null;
 
         routine.update(
                 req.title(), req.description(), req.level(),
@@ -123,16 +121,12 @@ public class RoutineService implements RoutineUseCase {
 
         Routine saved = routineRepository.save(routine);
 
-        if (newThumbnailId != null || req.removeThumbnail())
-            mediaService.deleteImageIfOwner(oldThumbnailId, ownerId);
-
         return toResponse(saved, ownerId);
     }
 
     @Override
     public void delete(Long id, Long ownerId) {
         Routine routine = findOwned(id, ownerId);
-        mediaService.deleteImageIfOwner(routine.getThumbnailId(), ownerId);
         routineRepository.deleteById(id);
     }
 
@@ -142,6 +136,21 @@ public class RoutineService implements RoutineUseCase {
         return routineRepository.findByOwner(ownerId, filter.equipmentIds(), filter.activityIds(),
                         filter.trainingGoalIds(), pageable)
                 .map(r -> toResponse(r, ownerId));
+    }
+
+    /**
+     * A fresh upload always wins. Otherwise, an explicit thumbnailId is used as-is after verifying
+     * ownership — this is how duplicating a routine can point at the source's existing image without
+     * re-uploading it (safe since removing a thumbnail only clears the reference, never deletes the
+     * underlying image — see RoutineService.update/delete).
+     */
+    private Long resolveNewThumbnailId(String thumbnailUploadToken, Long thumbnailId, Long ownerId) {
+        if (thumbnailUploadToken != null) return mediaService.claimImage(thumbnailUploadToken, ownerId);
+        if (thumbnailId != null) {
+            mediaService.verifyImageOwnership(thumbnailId, ownerId);
+            return thumbnailId;
+        }
+        return null;
     }
 
     private MuscleSummary resolveAndAggregateMuscleSummary(List<ExerciseSlot> slots, Long ownerId) {

@@ -24,6 +24,7 @@ public record ProgramRoutineDto(
         String description,
         Level level,
         String thumbnailUploadToken,
+        Long thumbnailId,   // used to duplicate an existing owned image's reference instead of re-uploading; ignored if thumbnailUploadToken is also present
         boolean removeThumbnail,
         @Min(1) int position,
         @NotEmpty @Valid List<ExerciseSlotDto> slots,

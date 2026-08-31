@@ -131,6 +131,8 @@ export type RoutineEntry = {
   description: string;
   thumbnailPreviewUrl: string | null;
   thumbnailToken: string | undefined;
+  /** Owned image id to reuse when creating a copy (no new upload). */
+  thumbnailId?: number;
   removeThumbnail: boolean;
   restBetweenExercisesSecs: number;
   slots: RoutineSlotForm[];
@@ -748,6 +750,7 @@ function ProgramRoutineSubDialog({
       description: data.description ?? "",
       thumbnailPreviewUrl: thumb.preview,
       thumbnailToken: thumb.token,
+      thumbnailId: thumb.token || thumb.removed ? undefined : initial?.thumbnailId,
       removeThumbnail: thumb.removed,
       restBetweenExercisesSecs: data.restBetweenExercisesSecs ?? 0,
       slots: (data.slots ?? []).map((s) => ({
@@ -973,7 +976,7 @@ function CopyRoutinePicker({
       </div>
 
       <p className="text-xs text-muted-foreground">
-        All data (exercises, sets, details) will be copied. Thumbnail needs to be re-uploaded.
+        All data (exercises, sets, details, thumbnail) will be copied. You can change the thumbnail before saving.
       </p>
 
       {isLoading ? (
@@ -1030,6 +1033,7 @@ function routineToEntry(r: RoutineResponse): RoutineEntry {
     description: r.description ?? "",
     thumbnailPreviewUrl: r.thumbnail?.url ?? null,
     thumbnailToken: undefined,
+    thumbnailId: r.thumbnail?.id,
     removeThumbnail: false,
     restBetweenExercisesSecs: parseDuration(r.restBetweenExercises),
     slots: r.slots.map((s) => ({
@@ -1092,7 +1096,7 @@ function DuplicateProgramPicker({
       </div>
 
       <p className="text-xs text-muted-foreground">
-        Program data and all routines will be copied. Thumbnails need to be re-uploaded.
+        Program data, routines, and thumbnails will be copied. You can change thumbnails before saving.
       </p>
 
       {isLoading ? (
@@ -1214,6 +1218,7 @@ export function ProgramDialog({
   const [editingEntry, setEditingEntry] = useState<RoutineEntry | null>(null);
   const [copyPickerOpen, setCopyPickerOpen] = useState(false);
   const [duplicatePickerOpen, setDuplicatePickerOpen] = useState(false);
+  const [sourceThumbnailId, setSourceThumbnailId] = useState<number | undefined>();
   const thumb = useThumbnailUpload();
 
   const { data: equipment = [] } = useQuery({ queryKey: ["catalog", "equipment"], queryFn: catalogApi.listEquipment, staleTime: 60_000 });
@@ -1279,6 +1284,7 @@ export function ProgramDialog({
             description: r.description ?? "",
             thumbnailPreviewUrl: r.thumbnail?.url ?? null,
             thumbnailToken: undefined,
+            thumbnailId: r.thumbnail?.id,
             removeThumbnail: false,
             restBetweenExercisesSecs: parseDuration(r.restBetweenExercises),
             slots: r.slots.map((s) => ({
@@ -1298,6 +1304,7 @@ export function ProgramDialog({
             trainingGoalIds: r.trainingGoals.map((g) => g.id),
           }))
         );
+        setSourceThumbnailId(undefined);
         thumb.reset(editing.thumbnail?.url ?? null);
         reset({
           title: editing.title,
@@ -1311,6 +1318,7 @@ export function ProgramDialog({
       } else if (seedFrom) {
         handleDuplicateProgram(seedFrom);
       } else {
+        setSourceThumbnailId(undefined);
         thumb.reset(null);
         setRoutineEntries([]);
         reset({ level: "INTERMEDIATE", daysPerWeek: 3, equipmentIds: [], activityIds: [], trainingGoalIds: [] });
@@ -1321,6 +1329,7 @@ export function ProgramDialog({
   const handleDuplicateProgram = (source: TrainingProgramResponse) => {
     const sorted = [...source.routines].sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
     setRoutineEntries(sorted.map(routineToEntry));
+    setSourceThumbnailId(source.thumbnail?.id);
     thumb.reset(source.thumbnail?.url ?? null);
     reset({
       title: `${source.title} (copy)`,
@@ -1368,6 +1377,8 @@ export function ProgramDialog({
         level: r.level,
         description: r.description || undefined,
         thumbnailUploadToken: r.thumbnailToken,
+        thumbnailId:
+          !r.id && !r.thumbnailToken && !r.removeThumbnail ? r.thumbnailId : undefined,
         removeThumbnail: r.removeThumbnail || undefined,
         position: i + 1,
         restBetweenExercises: formatDuration(r.restBetweenExercisesSecs),
@@ -1393,6 +1404,8 @@ export function ProgramDialog({
         level: data.level,
         description: data.description || undefined,
         thumbnailUploadToken: thumb.token,
+        thumbnailId:
+          !editing && !thumb.token && !thumb.removed ? sourceThumbnailId : undefined,
         removeThumbnail: thumb.removed,
         daysPerWeek: Number(data.daysPerWeek),
         routines: routineDtos,
@@ -1501,10 +1514,10 @@ export function ProgramDialog({
                       <div className="flex flex-col gap-1">
                         <p className="text-xs text-muted-foreground">Click to {thumb.preview ? "change" : "upload"}{thumb.token && <span className="text-primary ml-1">(ready)</span>}</p>
                         {thumb.preview && !thumb.uploading && (
-                          <button type="button" onClick={thumb.remove} className="text-xs text-destructive hover:underline text-left">Remove</button>
+                          <button type="button" onClick={() => { setSourceThumbnailId(undefined); thumb.remove(); }} className="text-xs text-destructive hover:underline text-left">Remove</button>
                         )}
                       </div>
-                      <input ref={thumb.fileRef} type="file" accept="image/*" className="hidden" onChange={thumb.handleFile} />
+                      <input ref={thumb.fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => { setSourceThumbnailId(undefined); void thumb.handleFile(e); }} />
                     </div>
                     {thumb.error && <p className="text-xs text-destructive">{thumb.error}</p>}
                   </div>

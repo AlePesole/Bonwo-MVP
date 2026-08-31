@@ -49,6 +49,8 @@ app:
     refresh-expiration-ms: ${JWT_REFRESH_EXPIRATION_MS:2592000000}
   media:
     pending-ttl-minutes: ${MEDIA_PENDING_TTL_MINUTES:15}
+    orphan-grace-hours: ${MEDIA_ORPHAN_GRACE_HOURS:24}
+    orphan-sweep-interval-hours: ${MEDIA_ORPHAN_SWEEP_INTERVAL_HOURS:24}
   admin-seed:
     email: ${ADMIN_EMAIL:}
     username: ${ADMIN_USERNAME:}

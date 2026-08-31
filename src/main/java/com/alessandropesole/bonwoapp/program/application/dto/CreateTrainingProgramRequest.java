@@ -15,6 +15,7 @@ public record CreateTrainingProgramRequest(
         String description,
         Level level,
         String thumbnailUploadToken,
+        Long thumbnailId,   // used to duplicate an existing owned image's reference instead of re-uploading; ignored if thumbnailUploadToken is also present
         @Min(1) @Max(7) int daysPerWeek,
         @Valid List<ProgramRoutineDto> routines,
         Set<Long> equipmentIds,

@@ -14,6 +14,8 @@ export interface RoutinePayload {
   description?: string;
   level?: string;
   thumbnailUploadToken?: string;
+  /** Reuse an owned image on create/duplicate; ignored if thumbnailUploadToken is set. */
+  thumbnailId?: number;
   removeThumbnail?: boolean;
   slots?: Array<{
     exerciseId: number;

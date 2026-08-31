@@ -17,6 +17,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 
 /**
  * Handles video and image upload/delete.
@@ -124,6 +126,17 @@ public class MediaService {
     }
 
     /**
+     * Verifies an already-active image belongs to ownerId — used when a request references an existing
+     * image by id directly (e.g. duplicating another owned entity's thumbnail) rather than uploading a
+     * new one. Unlike claimImage, this doesn't activate/mutate anything, just asserts ownership.
+     */
+    public void verifyImageOwnership(Long imageId, Long ownerId) {
+        Image image = imageRepository.findById(imageId)
+                .orElseThrow(() -> new ResourceNotFoundException("Image", imageId));
+        if (!image.isOwnedBy(ownerId)) throw new MediaNotOwnedException();
+    }
+
+    /**
      * Deletes a video from MediaStorage and BD.
      * Only deletes if ownerId matches — silently skips if not owner or not found.
      * Called when an entity is deleted or its mainVideoId is replaced.
@@ -164,6 +177,16 @@ public class MediaService {
         var expired = imageRepository.findAllExpiredPending();
         expired.forEach(this::deleteImageInternal);
         return expired.size();
+    }
+
+    /**
+     * Deletes ACTIVE images no longer referenced by any Exercise/Routine/TrainingProgram thumbnail
+     */
+    public int deleteOrphanedImages() {
+        var threshold = Instant.now().minus(mediaProperties.orphanGraceHours(), ChronoUnit.HOURS);
+        var orphaned = imageRepository.findAllOrphaned(threshold);
+        orphaned.forEach(this::deleteImageInternal);
+        return orphaned.size();
     }
 
     private void deleteVideoInternal(Video v) {
