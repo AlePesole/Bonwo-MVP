@@ -25,5 +25,6 @@ public record ExerciseResponse(
         List<EquipmentResponse> equipment,
         List<ActivityResponse> activities,
         List<TrainingGoalResponse> trainingGoals,
-        Instant createdAt
+        Instant createdAt,
+        Long publicationId
 ) {}

@@ -31,7 +31,8 @@ public final class ExerciseDtoMapper {
                 e.getMuscleSummary().getScores(),
                 muscles,
                 equipment, activities, trainingGoals,
-                e.getCreatedAt()
+                e.getCreatedAt(),
+                e.getPublicationId()
         );
     }
 }
