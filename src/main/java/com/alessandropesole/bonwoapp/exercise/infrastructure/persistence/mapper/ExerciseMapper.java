@@ -22,7 +22,8 @@ public final class ExerciseMapper {
                 new LinkedHashSet<>(e.getEquipmentIds()),
                 new LinkedHashSet<>(e.getActivityIds()),
                 new LinkedHashSet<>(e.getTrainingGoalIds()),
-                e.getCreatedAt()
+                e.getCreatedAt(),
+                e.getPublicationId()
         );
     }
 
@@ -42,6 +43,7 @@ public final class ExerciseMapper {
                 .activityIds(new ArrayList<>(e.getActivityIds()))
                 .trainingGoalIds(new ArrayList<>(e.getTrainingGoalIds()))
                 .createdAt(e.getCreatedAt())
+                .publicationId(e.getPublicationId())
                 .build();
     }
 }
