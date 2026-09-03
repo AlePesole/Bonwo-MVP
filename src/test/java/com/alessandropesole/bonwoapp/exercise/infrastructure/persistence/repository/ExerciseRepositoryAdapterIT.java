@@ -53,7 +53,7 @@ class ExerciseRepositoryAdapterIT extends AbstractIntegrationTest {
         exerciseRepository.save(basicExercise(2L, "Deadlift"));
 
         var page = exerciseRepository.findByOwner(1L, Set.of(), Set.of(), Set.of(), Set.of(),
-                PageRequest.of(0, 10));
+                null, PageRequest.of(0, 10));
 
         assertThat(page.getContent()).extracting(Exercise::getTitle).containsExactly("Squat");
     }
@@ -64,7 +64,7 @@ class ExerciseRepositoryAdapterIT extends AbstractIntegrationTest {
         exerciseRepository.save(exerciseWithMuscle(1L, "Squat", 21L));
 
         var page = exerciseRepository.findByOwner(1L, Set.of(4L), Set.of(), Set.of(), Set.of(),
-                PageRequest.of(0, 10));
+                null, PageRequest.of(0, 10));
 
         assertThat(page.getContent()).extracting(Exercise::getTitle).containsExactly("Bench Press");
     }
@@ -76,7 +76,7 @@ class ExerciseRepositoryAdapterIT extends AbstractIntegrationTest {
         exerciseRepository.save(exerciseWithEquipment(1L, "Push Up", Set.of(3L)));
 
         var page = exerciseRepository.findByOwner(1L, Set.of(), Set.of(1L, 2L), Set.of(), Set.of(),
-                PageRequest.of(0, 10));
+                null, PageRequest.of(0, 10));
 
         assertThat(page.getContent()).extracting(Exercise::getTitle)
                 .containsExactlyInAnyOrder("Bench Press", "Pull Up");
@@ -87,7 +87,7 @@ class ExerciseRepositoryAdapterIT extends AbstractIntegrationTest {
         exerciseRepository.save(exerciseWithEquipment(1L, "Dumbbell Fly", Set.of(1L, 3L)));
 
         var page = exerciseRepository.findByOwner(1L, Set.of(), Set.of(1L, 3L), Set.of(), Set.of(),
-                PageRequest.of(0, 10));
+                null, PageRequest.of(0, 10));
 
         assertThat(page.getContent()).hasSize(1);
     }

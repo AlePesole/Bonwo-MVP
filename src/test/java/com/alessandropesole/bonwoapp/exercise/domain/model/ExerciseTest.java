@@ -56,7 +56,7 @@ class ExerciseTest {
     @Test
     void reconstitute_setsAllFieldsIncludingId() {
         Exercise exercise = Exercise.reconstitute(5L, 1L, "Squat", Level.ADVANCED,
-                null, null, "desc", "steps", List.of(), null, Set.of(), Set.of(), Set.of(), null);
+                null, null, "desc", "steps", List.of(), null, Set.of(), Set.of(), Set.of(), null, null);
 
         assertThat(exercise.getId()).isEqualTo(5L);
         assertThat(exercise.getTitle()).isEqualTo("Squat");
@@ -66,7 +66,7 @@ class ExerciseTest {
     @Test
     void update_onlyOverwritesNonNullFields() {
         Exercise exercise = Exercise.reconstitute(1L, 1L, "Bench Press", Level.INTERMEDIATE,
-                null, null, "old desc", "old steps", List.of(), null, Set.of(), Set.of(), Set.of(), null);
+                null, null, "old desc", "old steps", List.of(), null, Set.of(), Set.of(), Set.of(), null, null);
 
         exercise.update(null, null, null, false, null, false,
                 "new desc", null, null, null, null, null, null);
@@ -79,7 +79,7 @@ class ExerciseTest {
     @Test
     void update_removesThumbnailWhenFlagIsTrue() {
         Exercise exercise = Exercise.reconstitute(1L, 1L, "Bench Press", Level.INTERMEDIATE,
-                10L, null, null, null, List.of(), null, Set.of(), Set.of(), Set.of(), null);
+                10L, null, null, null, List.of(), null, Set.of(), Set.of(), Set.of(), null, null);
 
         exercise.update(null, null, null, true, null, false,
                 null, null, null, null, null, null, null);
@@ -90,7 +90,7 @@ class ExerciseTest {
     @Test
     void update_removesMainVideoWhenFlagIsTrue() {
         Exercise exercise = Exercise.reconstitute(1L, 1L, "Bench Press", Level.INTERMEDIATE,
-                null, 20L, null, null, List.of(), null, Set.of(), Set.of(), Set.of(), null);
+                null, 20L, null, null, List.of(), null, Set.of(), Set.of(), Set.of(), null, null);
 
         exercise.update(null, null, null, false, null, true,
                 null, null, null, null, null, null, null);
@@ -101,7 +101,7 @@ class ExerciseTest {
     @Test
     void update_rejectsDuplicateMuscleSubGroups() {
         Exercise exercise = Exercise.reconstitute(1L, 1L, "Bench Press", Level.INTERMEDIATE,
-                null, null, null, null, List.of(), null, Set.of(), Set.of(), Set.of(), null);
+                null, null, null, null, List.of(), null, Set.of(), Set.of(), Set.of(), null, null);
         List<MuscleEntry> duplicated = List.of(MuscleEntry.of(4L, 0.5), MuscleEntry.of(4L, 0.9));
 
         assertThatThrownBy(() -> exercise.update(null, null, null, false, null, false,
@@ -112,7 +112,7 @@ class ExerciseTest {
     @Test
     void isOwnedBy_trueOnlyForMatchingOwnerId() {
         Exercise exercise = Exercise.reconstitute(1L, 42L, "Bench Press", Level.INTERMEDIATE,
-                null, null, null, null, List.of(), null, Set.of(), Set.of(), Set.of(), null);
+                null, null, null, null, List.of(), null, Set.of(), Set.of(), Set.of(), null, null);
 
         assertThat(exercise.isOwnedBy(42L)).isTrue();
         assertThat(exercise.isOwnedBy(99L)).isFalse();

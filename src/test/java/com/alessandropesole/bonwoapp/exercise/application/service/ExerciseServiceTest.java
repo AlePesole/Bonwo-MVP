@@ -9,6 +9,7 @@ import com.alessandropesole.bonwoapp.catalog.domain.port.out.TrainingGoalReposit
 import com.alessandropesole.bonwoapp.exercise.application.dto.CreateExerciseRequest;
 import com.alessandropesole.bonwoapp.exercise.application.dto.ExerciseResponse;
 import com.alessandropesole.bonwoapp.exercise.application.dto.UpdateExerciseRequest;
+import com.alessandropesole.bonwoapp.exercise.application.service.publication.ExerciseVisibilityResolver;
 import com.alessandropesole.bonwoapp.exercise.domain.model.Exercise;
 import com.alessandropesole.bonwoapp.exercise.domain.model.ExerciseFilter;
 import com.alessandropesole.bonwoapp.exercise.domain.model.Level;
@@ -47,6 +48,7 @@ class ExerciseServiceTest {
     @Mock private MediaService mediaService;
     @Mock private MediaResolver mediaResolver;
     @Mock private MuscleSummaryCalculator muscleSummaryCalculator;
+    @Mock private ExerciseVisibilityResolver exerciseVisibilityResolver;
 
     @InjectMocks
     private ExerciseService exerciseService;
@@ -86,8 +88,21 @@ class ExerciseServiceTest {
     @Test
     void getById_returnsResponseWhenOwned() {
         Exercise exercise = Exercise.reconstitute(1L, OWNER_ID, "Deadlift", Level.ADVANCED,
-                null, null, null, null, List.of(), null, Set.of(), Set.of(), Set.of(), null);
+                null, null, null, null, List.of(), null, Set.of(), Set.of(), Set.of(), null, null);
         when(exerciseRepository.findById(1L)).thenReturn(Optional.of(exercise));
+        when(exerciseVisibilityResolver.isVisible(exercise, OWNER_ID)).thenReturn(true);
+
+        ExerciseResponse response = exerciseService.getById(1L, OWNER_ID);
+
+        assertThat(response.title()).isEqualTo("Deadlift");
+    }
+
+    @Test
+    void getById_returnsPublishedExerciseEvenWhenNotOwner() {
+        Exercise exercise = Exercise.reconstitute(1L, 999L, "Deadlift", Level.ADVANCED,
+                null, null, null, null, List.of(), null, Set.of(), Set.of(), Set.of(), null, 77L);
+        when(exerciseRepository.findById(1L)).thenReturn(Optional.of(exercise));
+        when(exerciseVisibilityResolver.isVisible(exercise, OWNER_ID)).thenReturn(true);
 
         ExerciseResponse response = exerciseService.getById(1L, OWNER_ID);
 
@@ -103,10 +118,11 @@ class ExerciseServiceTest {
     }
 
     @Test
-    void getById_throwsForbiddenWhenNotOwner() {
+    void getById_throwsForbiddenWhenNotOwnerAndNotVisible() {
         Exercise exercise = Exercise.reconstitute(1L, 999L, "Deadlift", Level.ADVANCED,
-                null, null, null, null, List.of(), null, Set.of(), Set.of(), Set.of(), null);
+                null, null, null, null, List.of(), null, Set.of(), Set.of(), Set.of(), null, null);
         when(exerciseRepository.findById(1L)).thenReturn(Optional.of(exercise));
+        when(exerciseVisibilityResolver.isVisible(exercise, OWNER_ID)).thenReturn(false);
 
         assertThatThrownBy(() -> exerciseService.getById(1L, OWNER_ID))
                 .isInstanceOf(ForbiddenOperationException.class);
@@ -115,7 +131,7 @@ class ExerciseServiceTest {
     @Test
 void update_removesThumbnailWithoutPhysicallyDeletingTheImage() {
         Exercise exercise = Exercise.reconstitute(1L, OWNER_ID, "Bench Press", Level.INTERMEDIATE,
-                50L, null, null, null, List.of(), null, Set.of(), Set.of(), Set.of(), null);
+                50L, null, null, null, List.of(), null, Set.of(), Set.of(), Set.of(), null, null);
         when(exerciseRepository.findById(1L)).thenReturn(Optional.of(exercise));
         when(exerciseRepository.save(any(Exercise.class))).thenAnswer(inv -> inv.getArgument(0));
         UpdateExerciseRequest req = new UpdateExerciseRequest(
@@ -130,7 +146,7 @@ void update_removesThumbnailWithoutPhysicallyDeletingTheImage() {
     @Test
     void update_removesMainVideoAndDeletesOldVideoWhenRequested() {
         Exercise exercise = Exercise.reconstitute(1L, OWNER_ID, "Bench Press", Level.INTERMEDIATE,
-                null, 60L, null, null, List.of(), null, Set.of(), Set.of(), Set.of(), null);
+                null, 60L, null, null, List.of(), null, Set.of(), Set.of(), Set.of(), null, null);
         when(exerciseRepository.findById(1L)).thenReturn(Optional.of(exercise));
         when(exerciseRepository.save(any(Exercise.class))).thenAnswer(inv -> inv.getArgument(0));
         UpdateExerciseRequest req = new UpdateExerciseRequest(
@@ -144,7 +160,7 @@ void update_removesThumbnailWithoutPhysicallyDeletingTheImage() {
     @Test
     void update_throwsForbiddenWhenNotOwner() {
         Exercise exercise = Exercise.reconstitute(1L, 999L, "Bench Press", Level.INTERMEDIATE,
-                null, null, null, null, List.of(), null, Set.of(), Set.of(), Set.of(), null);
+                null, null, null, null, List.of(), null, Set.of(), Set.of(), Set.of(), null, null);
         when(exerciseRepository.findById(1L)).thenReturn(Optional.of(exercise));
         UpdateExerciseRequest req = new UpdateExerciseRequest(
                 "New title", null, null, false, null, false, null, null, null, null, null, null);
@@ -154,9 +170,22 @@ void update_removesThumbnailWithoutPhysicallyDeletingTheImage() {
     }
 
     @Test
+    void update_throwsForbiddenWhenExerciseBelongsToAPublication() {
+        Exercise exercise = Exercise.reconstitute(1L, OWNER_ID, "Bench Press", Level.INTERMEDIATE,
+                null, null, null, null, List.of(), null, Set.of(), Set.of(), Set.of(), null, 77L);
+        when(exerciseRepository.findById(1L)).thenReturn(Optional.of(exercise));
+        UpdateExerciseRequest req = new UpdateExerciseRequest(
+                "New title", null, null, false, null, false, null, null, null, null, null, null);
+
+        assertThatThrownBy(() -> exerciseService.update(1L, req, OWNER_ID))
+                .isInstanceOf(ForbiddenOperationException.class);
+        verify(exerciseRepository, never()).save(any());
+    }
+
+    @Test
     void delete_deletesVideoButNotThumbnailImage() {
         Exercise exercise = Exercise.reconstitute(1L, OWNER_ID, "Bench Press", Level.INTERMEDIATE,
-                50L, 60L, null, null, List.of(), null, Set.of(), Set.of(), Set.of(), null);
+                50L, 60L, null, null, List.of(), null, Set.of(), Set.of(), Set.of(), null, null);
         when(exerciseRepository.findById(1L)).thenReturn(Optional.of(exercise));
 
         exerciseService.delete(1L, OWNER_ID);
@@ -167,28 +196,39 @@ void update_removesThumbnailWithoutPhysicallyDeletingTheImage() {
     }
 
     @Test
+    void delete_throwsForbiddenWhenExerciseBelongsToAPublication() {
+        Exercise exercise = Exercise.reconstitute(1L, OWNER_ID, "Bench Press", Level.INTERMEDIATE,
+                null, null, null, null, List.of(), null, Set.of(), Set.of(), Set.of(), null, 77L);
+        when(exerciseRepository.findById(1L)).thenReturn(Optional.of(exercise));
+
+        assertThatThrownBy(() -> exerciseService.delete(1L, OWNER_ID))
+                .isInstanceOf(ForbiddenOperationException.class);
+        verify(exerciseRepository, never()).deleteById(any());
+    }
+
+    @Test
     void listMine_resolvesMuscleGroupIdToItsSubGroupIds() {
-        ExerciseFilter filter = new ExerciseFilter(1L, null, null, null, null);
+        ExerciseFilter filter = new ExerciseFilter(1L, null, null, null, null, null);
         var sub1 = MuscleSubGroup.reconstitute(4L, 1L, "Middle Chest", null, "path", null, null);
         var sub2 = MuscleSubGroup.reconstitute(7L, 1L, "Upper Chest", null, "path", null, null);
         when(muscleSubGroupRepository.findByGroupId(1L)).thenReturn(List.of(sub1, sub2));
-        when(exerciseRepository.findByOwner(eq(OWNER_ID), eq(Set.of(4L, 7L)), any(), any(), any(), any()))
+        when(exerciseRepository.findByOwner(eq(OWNER_ID), eq(Set.of(4L, 7L)), any(), any(), any(), any(), any()))
                 .thenReturn(new PageImpl<>(List.of()));
 
         exerciseService.listMine(OWNER_ID, filter, PageRequest.of(0, 10));
 
-        verify(exerciseRepository).findByOwner(eq(OWNER_ID), eq(Set.of(4L, 7L)), any(), any(), any(), any());
+        verify(exerciseRepository).findByOwner(eq(OWNER_ID), eq(Set.of(4L, 7L)), any(), any(), any(), any(), any());
     }
 
     @Test
     void listMine_usesExplicitSubGroupIdOverGroupId() {
-        ExerciseFilter filter = new ExerciseFilter(1L, 4L, null, null, null);
-        when(exerciseRepository.findByOwner(eq(OWNER_ID), eq(Set.of(4L)), any(), any(), any(), any()))
+        ExerciseFilter filter = new ExerciseFilter(1L, 4L, null, null, null, null);
+        when(exerciseRepository.findByOwner(eq(OWNER_ID), eq(Set.of(4L)), any(), any(), any(), any(), any()))
                 .thenReturn(new PageImpl<>(List.of()));
 
         exerciseService.listMine(OWNER_ID, filter, PageRequest.of(0, 10));
 
         verifyNoInteractions(muscleSubGroupRepository);
-        verify(exerciseRepository).findByOwner(eq(OWNER_ID), eq(Set.of(4L)), any(), any(), any(), any());
+        verify(exerciseRepository).findByOwner(eq(OWNER_ID), eq(Set.of(4L)), any(), any(), any(), any(), any());
     }
 }
