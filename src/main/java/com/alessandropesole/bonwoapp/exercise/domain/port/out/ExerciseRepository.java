@@ -13,7 +13,7 @@ public interface ExerciseRepository {
     Optional<Exercise> findById(Long id);
 
     Page<Exercise> findByOwner(Long ownerId, Set<Long> muscleSubGroupIds, Set<Long> equipmentIds,
-                               Set<Long> activityIds, Set<Long> trainingGoalIds, Pageable pageable);
+                               Set<Long> activityIds, Set<Long> trainingGoalIds, String title, Pageable pageable);
 
     void deleteById(Long id);
 }
