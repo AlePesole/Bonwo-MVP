@@ -10,18 +10,36 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { LayoutDashboard, LogOut, User, BookOpen } from "lucide-react";
+import {
+  BookOpen,
+  LayoutDashboard,
+  Library,
+  LogOut,
+  PlusCircle,
+  Search,
+  User,
+  Users,
+} from "lucide-react";
 
-function NavItem({ to, children }: { to: string; children: React.ReactNode }) {
+function NavItem({
+  to,
+  icon,
+  children,
+}: {
+  to: string;
+  icon: React.ReactNode;
+  children: React.ReactNode;
+}) {
   return (
     <NavLink
       to={to}
       className={({ isActive }) =>
-        `text-sm font-medium transition-colors hover:text-primary ${
+        `inline-flex items-center gap-1.5 text-sm font-medium transition-colors hover:text-primary whitespace-nowrap ${
           isActive ? "text-primary" : "text-muted-foreground"
         }`
       }
     >
+      {icon}
       {children}
     </NavLink>
   );
@@ -51,15 +69,36 @@ export function Layout() {
 
           {/* Nav links — only shown when authenticated */}
           <nav className="hidden md:flex items-center gap-6">
-            {isAuthenticated && <NavItem to="/library">Library</NavItem>}
+            {isAuthenticated && (
+              <NavItem to="/library" icon={<Library className="h-4 w-4" />}>
+                Library
+              </NavItem>
+            )}
+            {isAuthenticated && (
+              <NavItem to="/explore" icon={<Search className="h-4 w-4" />}>
+                Explore
+              </NavItem>
+            )}
+            {isAuthenticated && (
+              <NavItem to="/publications" icon={<PlusCircle className="h-4 w-4" />}>
+                Publications
+              </NavItem>
+            )}
             {isAdmin && (
               <>
-                <NavItem to="/catalog">Browse Catalog</NavItem>
-                <NavItem to="/admin/catalog">Catalog</NavItem>
-                <NavItem to="/admin/users">Users</NavItem>
+                <NavItem to="/catalog" icon={<BookOpen className="h-4 w-4" />}>
+                  Catalog
+                </NavItem>
+                <NavItem to="/admin/users" icon={<Users className="h-4 w-4" />}>
+                  Users
+                </NavItem>
               </>
             )}
-            {isAuthenticated && <NavItem to="/profile">My Profile</NavItem>}
+            {isAuthenticated && (
+              <NavItem to="/profile" icon={<User className="h-4 w-4" />}>
+                My Profile
+              </NavItem>
+            )}
           </nav>
 
           {/* Right side */}
@@ -96,7 +135,7 @@ export function Layout() {
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>
-                        <Link to="/admin/catalog" className="flex items-center gap-2 cursor-pointer">
+                        <Link to="/catalog?mode=edit" className="flex items-center gap-2 cursor-pointer">
                           <BookOpen className="h-4 w-4" />
                           Manage Catalog
                         </Link>
@@ -129,16 +168,29 @@ export function Layout() {
 
       {/* Mobile nav — only for authenticated users */}
       {isAuthenticated && (
-        <div className="md:hidden border-b border-border/60 px-4 py-2 flex gap-4 bg-background/95">
-          <NavItem to="/library">Library</NavItem>
+        <div className="md:hidden border-b border-border/60 px-4 py-2 flex gap-4 overflow-x-auto bg-background/95">
+          <NavItem to="/library" icon={<Library className="h-4 w-4" />}>
+            Library
+          </NavItem>
+          <NavItem to="/explore" icon={<Search className="h-4 w-4" />}>
+            Explore
+          </NavItem>
+          <NavItem to="/publications" icon={<PlusCircle className="h-4 w-4" />}>
+            Publications
+          </NavItem>
           {isAdmin && (
             <>
-              <NavItem to="/catalog">Browse Catalog</NavItem>
-              <NavItem to="/admin/catalog">Catalog</NavItem>
-              <NavItem to="/admin/users">Users</NavItem>
+              <NavItem to="/catalog" icon={<BookOpen className="h-4 w-4" />}>
+                Catalog
+              </NavItem>
+              <NavItem to="/admin/users" icon={<Users className="h-4 w-4" />}>
+                Users
+              </NavItem>
             </>
           )}
-          <NavItem to="/profile">My Profile</NavItem>
+          <NavItem to="/profile" icon={<User className="h-4 w-4" />}>
+            My Profile
+          </NavItem>
         </div>
       )}
 

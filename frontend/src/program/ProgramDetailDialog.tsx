@@ -444,9 +444,8 @@ export function ProgramDetailDialog({
             </div>
 
             {/* Description */}
-            {program.description && (
+            {program.description?.trim() && (
               <div className="mt-4 rounded-xl border border-primary/40 bg-card/50 px-4 py-3">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Description</p>
                 <p className="text-sm text-foreground/80 whitespace-pre-line">{program.description}</p>
               </div>
             )}

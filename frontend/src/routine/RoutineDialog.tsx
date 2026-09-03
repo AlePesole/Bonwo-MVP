@@ -20,6 +20,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { routineApi, formatDuration, parseDuration } from "./api";
 import { exerciseApi } from "@/exercise/api";
+import { publicationApi } from "@/publication/api";
 import { catalogApi } from "@/catalog/api";
 import { api, getErrorMessage } from "@/lib/axios";
 import { cn } from "@/lib/utils";
@@ -40,6 +41,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
 import { ApiError } from "@/components/ApiError";
 import { Spinner } from "@/components/Spinner";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { ChevronDown, Copy, Dumbbell, GripVertical, ImagePlus, Layers, Plus, Trash2, X } from "lucide-react";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -240,15 +242,18 @@ function ExercisePicker({
   onBack: () => void;
   excludeIds: number[];
 }) {
+  const [source, setSource] = useState<"mine" | "published">("mine");
   const [title, setTitle] = useState("");
+  const debouncedTitle = useDebouncedValue(title.trim(), 350);
   const [muscleGroupId, setMuscleGroupId] = useState<number | "">("");
   const [muscleSubGroupId, setMuscleSubGroupId] = useState<number | "">("");
   const [page, setPage] = useState(0);
 
-  // Reset page when any filter changes
-  const handleTitleChange = (v: string) => { setTitle(v); setPage(0); };
+  const handleTitleChange = (v: string) => { setTitle(v); };
   const handleGroupChange = (v: number | "") => { setMuscleGroupId(v); setMuscleSubGroupId(""); setPage(0); };
   const handleSubGroupChange = (v: number | "") => { setMuscleSubGroupId(v); setPage(0); };
+
+  useEffect(() => { setPage(0); }, [debouncedTitle]);
 
   const { data: muscleGroups = [] } = useQuery({
     queryKey: ["catalog", "muscles"],
@@ -258,25 +263,43 @@ function ExercisePicker({
 
   const selectedGroup = muscleGroups.find((g) => g.id === muscleGroupId);
 
-  const filter = {
-    title: title || undefined,
-    muscleGroupId: muscleGroupId || undefined,
-    muscleSubGroupId: muscleSubGroupId || undefined,
+  const mineFilter = {
+    title: debouncedTitle || undefined,
+    muscleGroupIds: muscleGroupId ? [Number(muscleGroupId)] : undefined,
+    muscleSubGroupIds: muscleSubGroupId ? [Number(muscleSubGroupId)] : undefined,
   };
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["exercises-picker", filter, page],
-    queryFn: () => exerciseApi.list(filter, page, 12),
+  const pubFilter = {
+    title: debouncedTitle || undefined,
+    muscleGroupIds: muscleGroupId ? [Number(muscleGroupId)] : undefined,
+    muscleSubGroupIds: muscleSubGroupId ? [Number(muscleSubGroupId)] : undefined,
+  };
+
+  const { data: mineData, isLoading: mineLoading } = useQuery({
+    queryKey: ["exercises-picker", mineFilter, page],
+    queryFn: () => exerciseApi.list(mineFilter, page, 12),
     staleTime: 30_000,
+    enabled: source === "mine",
   });
 
-  const exercises = data?.content ?? [];
+  const { data: pubData, isLoading: pubLoading } = useQuery({
+    queryKey: ["publications-picker", pubFilter, page],
+    queryFn: () => publicationApi.listFeed(pubFilter, page, 12),
+    staleTime: 30_000,
+    enabled: source === "published",
+  });
+
+  const isLoading = source === "mine" ? mineLoading : pubLoading;
+  const exercises: ExerciseResponse[] =
+    source === "mine"
+      ? (mineData?.content ?? [])
+      : (pubData?.content ?? []).map((p) => p.exercise);
+  const pageData = source === "mine" ? mineData : pubData;
 
   const selectClass = "h-7 rounded-md border border-input bg-background px-2 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring flex-1 min-w-0";
 
   return (
     <div className="space-y-3">
-      {/* Back + title search */}
       <div className="flex items-center gap-2">
         <button type="button" onClick={onBack} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors shrink-0">
           <ChevronDown className="h-4 w-4 rotate-90" /> Back
@@ -290,7 +313,29 @@ function ExercisePicker({
         />
       </div>
 
-      {/* Filter row */}
+      <div className="flex gap-1 p-0.5 rounded-lg bg-muted/50 border border-border">
+        <button
+          type="button"
+          onClick={() => { setSource("mine"); setPage(0); }}
+          className={cn(
+            "flex-1 text-xs font-medium py-1.5 rounded-md transition-colors",
+            source === "mine" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          My exercises
+        </button>
+        <button
+          type="button"
+          onClick={() => { setSource("published"); setPage(0); }}
+          className={cn(
+            "flex-1 text-xs font-medium py-1.5 rounded-md transition-colors",
+            source === "published" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          Published
+        </button>
+      </div>
+
       <div className="flex items-center gap-2 flex-wrap">
         <select
           value={muscleGroupId}
@@ -325,7 +370,6 @@ function ExercisePicker({
         )}
       </div>
 
-      {/* Results */}
       {isLoading ? (
         <div className="flex justify-center py-6"><Spinner size="sm" label="" /></div>
       ) : exercises.length === 0 ? (
@@ -354,7 +398,12 @@ function ExercisePicker({
                     <Dumbbell className="h-4 w-4 text-muted-foreground/50" />
                   )}
                 </div>
-                <span className="text-sm flex-1 truncate">{ex.title}</span>
+                <div className="flex-1 min-w-0">
+                  <span className="text-sm truncate block">{ex.title}</span>
+                  {ex.publicationId != null && (
+                    <span className="text-[10px] text-sky-400">Published</span>
+                  )}
+                </div>
                 <span className={cn("text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0", LEVEL_BADGE[ex.level] ?? "bg-muted text-muted-foreground")}>
                   {ex.level[0] + ex.level.slice(1).toLowerCase()}
                 </span>
@@ -365,15 +414,14 @@ function ExercisePicker({
         </div>
       )}
 
-      {/* Pagination */}
-      {data && data.totalPages > 1 && (
+      {pageData && pageData.totalPages > 1 && (
         <div className="flex justify-center items-center gap-2">
-          <button type="button" disabled={data.first} onClick={() => setPage((p) => p - 1)}
+          <button type="button" disabled={pageData.first} onClick={() => setPage((p) => p - 1)}
             className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-40 px-2 py-1 rounded border border-border">
             ← Prev
           </button>
-          <span className="text-xs text-muted-foreground">{page + 1} / {data.totalPages}</span>
-          <button type="button" disabled={data.last} onClick={() => setPage((p) => p + 1)}
+          <span className="text-xs text-muted-foreground">{page + 1} / {pageData.totalPages}</span>
+          <button type="button" disabled={pageData.last} onClick={() => setPage((p) => p + 1)}
             className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-40 px-2 py-1 rounded border border-border">
             Next →
           </button>

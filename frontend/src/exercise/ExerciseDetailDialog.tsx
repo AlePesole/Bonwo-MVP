@@ -1,23 +1,25 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { catalogApi } from "@/catalog/api";
 import { BODY_DIAGRAMS } from "@/catalog/bodyDiagram";
 import { routineApi, type RoutinePayload } from "@/routine/api";
-import { cn } from "@/lib/utils";
+import { cn, formatTimeAgo } from "@/lib/utils";
 import { getErrorMessage } from "@/lib/axios";
 import type {
   ActivationLevel,
+  ExercisePublicationResponse,
   ExerciseResponse,
   MuscleEntryResponse,
   MuscleGroupResponse,
   MuscleSubGroupResponse,
+  PublicationType,
   RoutineResponse,
 } from "@/types/api";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,7 +29,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ApiError } from "@/components/ApiError";
 import { Spinner } from "@/components/Spinner";
+import { publicationApi } from "@/publication/api";
+import { useAuth } from "@/auth/AuthContext";
 import {
+  Bookmark,
   ChevronDown,
   FolderPlus,
   Layers,
@@ -36,6 +41,8 @@ import {
   MoreVertical,
   Pencil,
   Trash2,
+  Heart,
+  Repeat2,
 } from "lucide-react";
 
 // ── Level badge ───────────────────────────────────────────────────────────────
@@ -49,6 +56,11 @@ const LEVEL_LABEL: Record<string, string> = {
   BEGINNER: "Beginner",
   INTERMEDIATE: "Intermediate",
   ADVANCED: "Advanced",
+};
+
+const TYPE_BADGE: Record<PublicationType, string> = {
+  COMMUNITY: "bg-sky-500/20 text-sky-300 border-sky-500/40",
+  OFFICIAL: "bg-violet-500/20 text-violet-300 border-violet-500/40",
 };
 
 // ── Role colors for SVG muscle overlay ───────────────────────────────────────
@@ -295,6 +307,87 @@ function MediaBlock({ exercise }: { exercise: ExerciseResponse }) {
       ) : (
         <Dumbbell className="h-12 w-12 text-muted-foreground/30" />
       )}
+    </div>
+  );
+}
+
+function PublicationCounters({
+  publication,
+  onChange,
+}: {
+  publication: ExercisePublicationResponse;
+  onChange: (p: ExercisePublicationResponse) => void;
+}) {
+  const { user } = useAuth();
+  const qc = useQueryClient();
+  const likeMut = useMutation({
+    mutationFn: () =>
+      publication.likedByMe
+        ? publicationApi.unlike(publication.id)
+        : publicationApi.like(publication.id),
+    onSuccess: (p) => {
+      onChange(p);
+      qc.invalidateQueries({ queryKey: ["publications"] });
+    },
+  });
+  const saveMut = useMutation({
+    mutationFn: () =>
+      publication.savedByMe
+        ? publicationApi.unsave(publication.id)
+        : publicationApi.save(publication.id),
+    onSuccess: (p) => {
+      onChange(p);
+      qc.invalidateQueries({ queryKey: ["publications"] });
+    },
+  });
+
+  const username =
+    publication.authorUsername?.trim() ||
+    (user?.id === publication.authorId ? user.username : "") ||
+    "Unknown";
+  const initial = username[0]?.toUpperCase() ?? "?";
+
+  const chip =
+    "inline-flex items-center gap-1.5 text-xs text-muted-foreground px-2 py-1 rounded-md border border-border/60 bg-card/40";
+
+  return (
+    <div className="flex items-center justify-between gap-3 mt-2">
+      <div className="flex items-center gap-2 min-w-0">
+        <Avatar className="h-8 w-8 shrink-0">
+          {publication.authorAvatar?.url && (
+            <AvatarImage src={publication.authorAvatar.url} alt={username} />
+          )}
+          <AvatarFallback className="text-[10px] font-semibold bg-primary/15 text-primary">
+            {initial}
+          </AvatarFallback>
+        </Avatar>
+        <span className="text-sm font-medium truncate">{username}</span>
+      </div>
+
+      <div className="flex flex-wrap items-center justify-end gap-2 shrink-0">
+        <button
+          type="button"
+          className={cn(chip, "hover:border-primary/50 transition-colors", publication.likedByMe && "text-red-400 border-red-500/40")}
+          disabled={likeMut.isPending}
+          onClick={() => likeMut.mutate()}
+        >
+          <Heart className={cn("h-3.5 w-3.5", publication.likedByMe && "fill-current")} />
+          {publication.likesCount}
+        </button>
+        <button
+          type="button"
+          className={cn(chip, "hover:border-primary/50 transition-colors", publication.savedByMe && "text-amber-400 border-amber-500/40")}
+          disabled={saveMut.isPending}
+          onClick={() => saveMut.mutate()}
+        >
+          <Bookmark className={cn("h-3.5 w-3.5", publication.savedByMe && "fill-current")} />
+          {publication.savesCount}
+        </button>
+        <span className={chip}>
+          <Repeat2 className="h-3.5 w-3.5" />
+          {publication.usesCount}
+        </span>
+      </div>
     </div>
   );
 }
@@ -613,14 +706,36 @@ export function ExerciseDetailDialog({
   onClose,
   onEdit,
   onDelete,
+  publication: publicationProp = null,
 }: {
   exercise: ExerciseResponse | null;
   onClose: () => void;
   onEdit?: () => void;
   onDelete?: () => void;
+  /** When set, shows publication type + counters under media (not visibility). */
+  publication?: ExercisePublicationResponse | null;
 }) {
   const [addToRoutineOpen, setAddToRoutineOpen] = useState(false);
   const [addedOk, setAddedOk] = useState(false);
+  const [publication, setPublication] = useState<ExercisePublicationResponse | null>(publicationProp);
+
+  useEffect(() => {
+    setPublication(publicationProp);
+  }, [publicationProp]);
+
+  // Fetch fresh publication (registers a view) when opening a publication detail
+  const pubId = publicationProp?.id ?? exercise?.publicationId ?? null;
+  const { data: fetchedPub } = useQuery({
+    queryKey: ["publications", "detail", pubId],
+    queryFn: () => publicationApi.getById(pubId!),
+    enabled: !!pubId,
+    staleTime: 0,
+  });
+
+  useEffect(() => {
+    if (fetchedPub) setPublication(fetchedPub);
+  }, [fetchedPub]);
+
   const { data: muscleGroups = [] } = useQuery({
     queryKey: ["catalog", "muscles"],
     queryFn: catalogApi.listMuscleGroups,
@@ -629,6 +744,9 @@ export function ExerciseDetailDialog({
   });
 
   if (!exercise) return null;
+
+  const displayExercise = publication?.exercise ?? exercise;
+  const descriptionText = displayExercise.description?.trim() || "";
 
   return (
     <Dialog
@@ -683,10 +801,10 @@ export function ExerciseDetailDialog({
           <>
             <DialogHeader className="px-6 pt-5 pb-0 shrink-0 items-center text-center">
               <DialogTitle className="text-xl font-bold">Add to routine</DialogTitle>
-              <p className="text-sm text-muted-foreground mt-1 truncate max-w-full px-8">{exercise.title}</p>
+              <p className="text-sm text-muted-foreground mt-1 truncate max-w-full px-8">{displayExercise.title}</p>
             </DialogHeader>
             <AddToRoutinePicker
-              exercise={exercise}
+              exercise={displayExercise}
               onBack={() => setAddToRoutineOpen(false)}
               onDone={() => {
                 setAddToRoutineOpen(false);
@@ -698,13 +816,23 @@ export function ExerciseDetailDialog({
         ) : (
         <>
         <DialogHeader className="px-6 pt-5 pb-0 shrink-0 items-center text-center">
-          <DialogTitle className="text-xl font-bold">{exercise.title}</DialogTitle>
-          <span className={cn(
-            "inline-flex items-center self-center px-3 py-1 rounded-full text-xs font-semibold border mt-2",
-            LEVEL_COLOR[exercise.level]
-          )}>
-            {LEVEL_LABEL[exercise.level]}
-          </span>
+          <DialogTitle className="text-xl font-bold">{displayExercise.title}</DialogTitle>
+          <div className="flex flex-wrap items-center justify-center gap-2 mt-2">
+            <span className={cn(
+              "inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border",
+              LEVEL_COLOR[displayExercise.level]
+            )}>
+              {LEVEL_LABEL[displayExercise.level]}
+            </span>
+            {publication && (
+              <span className={cn(
+                "inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border",
+                TYPE_BADGE[publication.type]
+              )}>
+                {publication.type[0] + publication.type.slice(1).toLowerCase()}
+              </span>
+            )}
+          </div>
           {addedOk && (
             <p className="text-xs text-emerald-400 mt-2">Added to routine</p>
           )}
@@ -715,35 +843,54 @@ export function ExerciseDetailDialog({
           <div className="flex flex-col sm:flex-row gap-5 mt-4 items-start">
             {/* Media */}
             <div className="sm:w-[65%] shrink-0">
-              <MediaBlock exercise={exercise} />
+              <MediaBlock exercise={displayExercise} />
+              {publication && (
+                <PublicationCounters
+                  publication={publication}
+                  onChange={setPublication}
+                />
+              )}
             </div>
 
             {/* Stats */}
             <div className="flex-1 space-y-4 self-stretch flex flex-col justify-center">
 
-              <CatalogSection label="Equipment" items={exercise.equipment} />
-              <CatalogSection label="Activity" items={exercise.activities} />
-              <CatalogSection label="Training Goal" items={exercise.trainingGoals} />
+              <CatalogSection label="Equipment" items={displayExercise.equipment} />
+              <CatalogSection label="Activity" items={displayExercise.activities} />
+              <CatalogSection label="Training Goal" items={displayExercise.trainingGoals} />
 
-              {exercise.equipment.length === 0 && exercise.activities.length === 0 && exercise.trainingGoals.length === 0 && (
+              {displayExercise.equipment.length === 0 && displayExercise.activities.length === 0 && displayExercise.trainingGoals.length === 0 && (
                 <p className="text-xs text-muted-foreground italic">No catalog details added.</p>
               )}
             </div>
           </div>
 
+          {/* ── Description / views ── */}
+          {publication ? (
+            <div className="mt-4 rounded-xl border border-primary/40 bg-card/50 px-4 py-3 space-y-3">
+              <p className="text-sm font-medium">
+                {publication.viewsCount}{" "}
+                {publication.viewsCount === 1 ? "view" : "views"}
+                {publication.publishedAt
+                  ? ` · ${formatTimeAgo(publication.publishedAt)}`
+                  : ""}
+              </p>
+              {descriptionText ? (
+                <p className="text-sm text-foreground/80 whitespace-pre-line">{descriptionText}</p>
+              ) : null}
+            </div>
+          ) : descriptionText ? (
+            <div className="mt-4 rounded-xl border border-primary/40 bg-card/50 px-4 py-3">
+              <p className="text-sm text-foreground/80 whitespace-pre-line">{descriptionText}</p>
+            </div>
+          ) : null}
+
           {/* ── Tabs: Info / Muscles ── */}
           <Tabs defaultValue="muscles" className="mt-6">
             <div className="relative flex justify-center">
               <TabsList className="border border-primary/40 relative z-10">
-                <TabsTrigger value="muscles">
-                  Muscles
-                  {exercise.muscles.length > 0 && (
-                    <Badge variant="secondary" className="ml-1.5 text-[10px] px-1.5 py-0">
-                      {exercise.muscles.length}
-                    </Badge>
-                  )}
-                </TabsTrigger>
-                <TabsTrigger value="details">Details</TabsTrigger>
+                <TabsTrigger value="muscles">Muscles</TabsTrigger>
+                <TabsTrigger value="instructions">Instructions</TabsTrigger>
                 <TabsTrigger value="summary">Summary</TabsTrigger>
               </TabsList>
               <div className="absolute top-full left-0 right-0 h-20 pointer-events-none -z-10" style={{
@@ -753,31 +900,23 @@ export function ExerciseDetailDialog({
 
             {/* Summary tab */}
             <TabsContent value="summary" className="mt-4 relative z-10">
-              <MuscleSummaryTab exercise={exercise} muscleGroups={muscleGroups} />
+              <MuscleSummaryTab exercise={displayExercise} muscleGroups={muscleGroups} />
             </TabsContent>
 
-            {/* Details tab */}
-            <TabsContent value="details" className="mt-4 space-y-4 relative z-10">
-              {exercise.description && (
-                <div className="space-y-1.5">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Description</p>
-                  <p className="text-sm text-foreground/80 leading-relaxed">{exercise.description}</p>
+            {/* Instructions tab */}
+            <TabsContent value="instructions" className="mt-4 space-y-4 relative z-10">
+              {displayExercise.instructions?.trim() ? (
+                <div className="rounded-xl border border-primary/40 bg-card/50 px-4 py-3">
+                  <p className="text-sm text-foreground/80 whitespace-pre-line">{displayExercise.instructions}</p>
                 </div>
-              )}
-              {exercise.instructions && (
-                <div className="space-y-1.5">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Instructions</p>
-                  <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-line">{exercise.instructions}</p>
-                </div>
-              )}
-              {!exercise.description && !exercise.instructions && (
-                <p className="text-sm text-muted-foreground italic">No description or instructions added.</p>
+              ) : (
+                <p className="text-sm text-muted-foreground italic">No instructions added.</p>
               )}
             </TabsContent>
 
             {/* Muscles tab */}
             <TabsContent value="muscles" className="mt-4 relative z-10">
-              <ExerciseMuscleMap muscles={exercise.muscles} muscleGroups={muscleGroups} />
+              <ExerciseMuscleMap muscles={displayExercise.muscles} muscleGroups={muscleGroups} />
             </TabsContent>
           </Tabs>
         </div>

@@ -390,9 +390,6 @@ export function RoutinesPage() {
 
       <div className="mb-6 text-center">
         <h1 className="text-3xl font-bold">My Routines</h1>
-        <p className="text-muted-foreground mt-1">
-          Exercises · Routines · Programs
-        </p>
       </div>
 
       <Tabs defaultValue="routines">

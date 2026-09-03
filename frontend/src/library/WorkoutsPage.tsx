@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { exerciseApi, type ExerciseFilter } from "@/exercise/api";
@@ -6,14 +6,23 @@ import { catalogApi } from "@/catalog/api";
 import { ExerciseDialog } from "@/exercise/ExerciseDialog";
 import { ExerciseDetailDialog } from "@/exercise/ExerciseDetailDialog";
 import { MuscleGroupFilterRow } from "@/library/MuscleGroupFilterRow";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { cn } from "@/lib/utils";
 import { getErrorMessage } from "@/lib/axios";
 import type { ExerciseResponse, Level, MuscleGroupResponse } from "@/types/api";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { ApiError } from "@/components/ApiError";
 import { PageSpinner } from "@/components/Spinner";
-import { ChevronLeft, Dumbbell, Pencil, Plus, SlidersHorizontal, Trash2, X } from "lucide-react";
+import { ChevronLeft, Dumbbell, MoreVertical, Pencil, Plus, Search, SlidersHorizontal, Trash2, X } from "lucide-react";
 
 // ── Level badge ───────────────────────────────────────────────────────────────
 
@@ -114,29 +123,40 @@ function ExerciseCard({
         </div>
       </div>
 
-      {/* Title + action buttons */}
+      {/* Title + actions */}
       <div className="p-2.5">
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex items-start justify-between gap-1">
           <h3
             className="font-semibold text-sm leading-tight line-clamp-2 flex-1 cursor-pointer hover:text-primary transition-colors"
             onClick={onView}
           >
             {exercise.title}
           </h3>
-          <div className="flex gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-            <button
-              onClick={onEdit}
-              className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <Pencil className="h-3.5 w-3.5" />
-            </button>
-            <button
-              onClick={onDelete}
-              className="p-1 rounded text-muted-foreground hover:text-destructive transition-colors"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </button>
-          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 shrink-0 -mr-1 text-muted-foreground hover:text-foreground"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <MoreVertical className="h-4 w-4" />
+                <span className="sr-only">Actions</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-44">
+              <DropdownMenuItem onClick={onEdit}>
+                <Pencil className="h-4 w-4 mr-2" /> Edit
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="text-destructive focus:text-destructive"
+                onClick={onDelete}
+              >
+                <Trash2 className="h-4 w-4 mr-2" /> Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
     </div>
@@ -226,11 +246,22 @@ function FilterPanel({
 function ExercisesTab() {
   const qc = useQueryClient();
   const [filter, setFilter] = useState<ExerciseFilter>({});
+  const [titleDraft, setTitleDraft] = useState("");
+  const debouncedTitle = useDebouncedValue(titleDraft.trim(), 350);
   const [page, setPage] = useState(0);
   const [filterOpen, setFilterOpen] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<ExerciseResponse | null>(null);
   const [detailExercise, setDetailExercise] = useState<ExerciseResponse | null>(null);
+
+  useEffect(() => {
+    setFilter((prev) => {
+      const next = debouncedTitle || undefined;
+      if (prev.title === next) return prev;
+      return { ...prev, title: next };
+    });
+    setPage(0);
+  }, [debouncedTitle]);
 
   const { data: muscleGroups = [] } = useQuery({
     queryKey: ["catalog", "muscles"],
@@ -244,7 +275,7 @@ function ExercisesTab() {
     (filter.equipmentIds?.length ?? 0) +
     (filter.activityIds?.length ?? 0) +
     (filter.trainingGoalIds?.length ?? 0);
-  const hasAnyFilter = panelFilters > 0 || muscleIds.length > 0 || subIds.length > 0;
+  const hasAnyFilter = panelFilters > 0 || muscleIds.length > 0 || subIds.length > 0 || !!filter.title;
 
   const muscleGroupMap = useMemo(
     () => new Map(muscleGroups.map((g) => [g.id, g])),
@@ -311,11 +342,20 @@ function ExercisesTab() {
   return (
     <div className="space-y-4">
       {/* Toolbar */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 flex-wrap">
+        <div className="relative flex-1 min-w-[160px] max-w-xs">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <Input
+            value={titleDraft}
+            onChange={(e) => setTitleDraft(e.target.value)}
+            placeholder="Search by title…"
+            className="h-8 pl-8 text-sm"
+          />
+        </div>
         <Button
           variant={filterOpen ? "default" : "outline"}
           size="sm"
-          className="gap-1.5"
+          className="gap-1.5 h-8"
           onClick={() => setFilterOpen((v) => !v)}
         >
           <SlidersHorizontal className="h-4 w-4" />
@@ -331,8 +371,8 @@ function ExercisesTab() {
           <Button
             variant="ghost"
             size="sm"
-            className="gap-1 text-muted-foreground"
-            onClick={() => { setFilter({}); setPage(0); }}
+            className="gap-1 text-muted-foreground h-8"
+            onClick={() => { setFilter({}); setTitleDraft(""); setPage(0); }}
           >
             <X className="h-3.5 w-3.5" /> Clear
           </Button>
@@ -342,7 +382,7 @@ function ExercisesTab() {
 
         <Button
           size="sm"
-          className="gap-1.5"
+          className="gap-1.5 h-8"
           onClick={() => { setEditing(null); setDialogOpen(true); }}
         >
           <Plus className="h-4 w-4" /> New exercise
@@ -465,9 +505,6 @@ export function WorkoutsPage() {
 
       <div className="mb-6 text-center">
         <h1 className="text-3xl font-bold">My Exercises</h1>
-        <p className="text-muted-foreground mt-1">
-          Exercises · Routines · Programs
-        </p>
       </div>
 
       <Tabs defaultValue="exercises">

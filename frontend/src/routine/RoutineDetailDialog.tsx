@@ -153,7 +153,12 @@ function SlotListItem({ slot, onView }: { slot: ExerciseSlotResponse; onView: (e
               </div>
               <div className="flex-1 min-w-0">
                 <span className="text-sm font-medium truncate block">{slot.exercise.title}</span>
-                <span className="text-xs text-muted-foreground">{slot.sets.length} set{slot.sets.length !== 1 ? "s" : ""}</span>
+                <span className="text-xs text-muted-foreground">
+                  {slot.sets.length} set{slot.sets.length !== 1 ? "s" : ""}
+                  {slot.exercise.publicationId != null && (
+                    <span className="text-sky-400"> · Published</span>
+                  )}
+                </span>
               </div>
             </>
           ) : (
@@ -729,9 +734,8 @@ export function RoutineDetailDialog({
           </div>
 
           {/* ── Description ── */}
-          {routine.description && (
+          {routine.description?.trim() && (
             <div className="mt-4 rounded-xl border border-primary/40 bg-card/50 px-4 py-3">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Description</p>
               <p className="text-sm text-foreground/80 whitespace-pre-line">{routine.description}</p>
             </div>
           )}

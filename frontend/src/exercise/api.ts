@@ -15,6 +15,9 @@ export interface ExercisePayload {
   title: string;
   level?: string;
   thumbnailUploadToken?: string;
+  removeThumbnail?: boolean;
+  mainVideoUploadToken?: string;
+  removeMainVideo?: boolean;
   description?: string;
   instructions?: string;
   muscles?: Array<{ subGroupId: number; activation: number }>;
