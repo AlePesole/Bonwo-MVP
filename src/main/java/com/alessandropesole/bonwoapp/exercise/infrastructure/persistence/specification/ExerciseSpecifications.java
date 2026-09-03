@@ -13,11 +13,17 @@ public final class ExerciseSpecifications {
 
     public static Specification<ExerciseJpaEntity> matching(Long ownerId, Set<Long> muscleSubGroupIds,
                                                              Set<Long> equipmentIds, Set<Long> activityIds,
-                                                             Set<Long> trainingGoalIds) {
+                                                             Set<Long> trainingGoalIds, String title) {
         return (root, query, cb) -> {
             query.distinct(true);
 
-            var predicate = cb.equal(root.get("ownerId"), ownerId);
+            var predicate = cb.and(
+                    cb.equal(root.get("ownerId"), ownerId),
+                    cb.isNull(root.get("publicationId")));
+
+            if (title != null && !title.isBlank()) {
+                predicate = cb.and(predicate, cb.like(cb.lower(root.get("title")), "%" + title.toLowerCase() + "%"));
+            }
 
             if (muscleSubGroupIds != null && !muscleSubGroupIds.isEmpty()) {
                 var muscles = root.<ExerciseJpaEntity, MuscleEntryEmbeddable>join("muscles");
