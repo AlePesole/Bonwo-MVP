@@ -211,7 +211,6 @@ public class ExercisePublicationService implements ExercisePublicationUseCase {
         Exercise exercise = findExercise(publication.getExerciseId());
         mediaService.deleteVideoIfOwner(exercise.getMainVideoId(), authorId);
         publicationRepository.deleteById(id);
-        exerciseRepository.deleteById(exercise.getId());
     }
 
     @Override

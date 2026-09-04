@@ -172,7 +172,9 @@ function PublicationCard({
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 className="text-destructive focus:text-destructive"
-                onClick={onDelete}
+                onSelect={() => {
+                  window.setTimeout(() => onDelete(), 0);
+                }}
               >
                 <Trash2 className="h-4 w-4 mr-2" /> Delete
               </DropdownMenuItem>
@@ -252,8 +254,24 @@ function PublicationExercisesTab() {
 
   const deleteMutation = useMutation({
     mutationFn: publicationApi.delete,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["publications"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["publications"] });
+      // Publication delete cascades to the owned exercise in the DB
+      qc.invalidateQueries({ queryKey: ["exercises"] });
+      setDetail(null);
+    },
   });
+
+  /** Native confirm is blocked inside Radix Dialog — close detail first, then confirm. */
+  const requestDelete = (pub: ExercisePublicationResponse) => {
+    const title = pub.exercise.title;
+    const id = pub.id;
+    if (detail?.id === id) setDetail(null);
+    window.setTimeout(() => {
+      if (!window.confirm(`Delete publication "${title}"?`)) return;
+      deleteMutation.mutate(id);
+    }, 50);
+  };
 
   const toggleCatalog = (
     field: "equipmentIds" | "activityIds" | "trainingGoalIds",
@@ -406,6 +424,9 @@ function PublicationExercisesTab() {
 
       {isLoading && <PageSpinner />}
       {error && <ApiError message={getErrorMessage(error)} />}
+      {deleteMutation.isError && (
+        <ApiError message={getErrorMessage(deleteMutation.error)} />
+      )}
 
       {!isLoading && !error && (
         <>
@@ -432,10 +453,7 @@ function PublicationExercisesTab() {
                   muscleGroupMap={muscleGroupMap}
                   onView={() => setDetail(pub)}
                   onEdit={() => { setEditing(pub); setDialogOpen(true); }}
-                  onDelete={() =>
-                    window.confirm(`Delete publication "${pub.exercise.title}"?`) &&
-                    deleteMutation.mutate(pub.id)
-                  }
+                  onDelete={() => requestDelete(pub)}
                 />
               ))}
             </div>
@@ -469,8 +487,7 @@ function PublicationExercisesTab() {
         }}
         onDelete={() => {
           if (!detail) return;
-          if (!window.confirm(`Delete publication "${detail.exercise.title}"?`)) return;
-          deleteMutation.mutate(detail.id, { onSuccess: () => setDetail(null) });
+          requestDelete(detail);
         }}
       />
     </div>

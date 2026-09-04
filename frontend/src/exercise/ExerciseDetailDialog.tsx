@@ -787,7 +787,10 @@ export function ExerciseDetailDialog({
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     className="text-destructive focus:text-destructive"
-                    onClick={onDelete}
+                    onSelect={() => {
+                      // Defer so native confirm isn't blocked by Dialog focus trap
+                      window.setTimeout(() => onDelete(), 0);
+                    }}
                   >
                     <Trash2 className="h-4 w-4 mr-2" /> Delete
                   </DropdownMenuItem>

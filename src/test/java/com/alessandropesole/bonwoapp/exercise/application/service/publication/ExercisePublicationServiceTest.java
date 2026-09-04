@@ -213,14 +213,14 @@ class ExercisePublicationServiceTest {
     }
 
     @Test
-    void delete_removesBothPublicationAndExercise() {
+    void delete_removesPublication_exerciseAndEngagementRowsCascadeInTheDb() {
         when(publicationRepository.findById(PUBLICATION_ID)).thenReturn(Optional.of(ownedPublication()));
         when(exerciseRepository.findById(EXERCISE_ID)).thenReturn(Optional.of(ownedExercise()));
 
         publicationService.delete(PUBLICATION_ID, AUTHOR_ID);
 
         verify(publicationRepository).deleteById(PUBLICATION_ID);
-        verify(exerciseRepository).deleteById(EXERCISE_ID);
+        verify(exerciseRepository, never()).deleteById(any());
     }
 
     @Test
