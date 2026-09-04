@@ -34,13 +34,15 @@ function buildParams(filter: ProgramFilter, page: number, size: number): URLSear
 }
 
 export const programApi = {
-  list: (filter: ProgramFilter = {}, page = 0, size = 12) =>
+  list: (filter: ProgramFilter = {}, page = 0, size = 12, signal?: AbortSignal) =>
     api
-      .get<PageResponse<TrainingProgramResponse>>(`/training-programs?${buildParams(filter, page, size)}`)
+      .get<PageResponse<TrainingProgramResponse>>(`/training-programs?${buildParams(filter, page, size)}`, {
+        signal,
+      })
       .then((r) => r.data),
 
-  getById: (id: number) =>
-    api.get<TrainingProgramResponse>(`/training-programs/${id}`).then((r) => r.data),
+  getById: (id: number, signal?: AbortSignal) =>
+    api.get<TrainingProgramResponse>(`/training-programs/${id}`, { signal }).then((r) => r.data),
 
   create: (body: ProgramPayload) =>
     api.post<TrainingProgramResponse>("/training-programs", body).then((r) => r.data),

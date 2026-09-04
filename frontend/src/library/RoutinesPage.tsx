@@ -5,7 +5,10 @@ import { routineApi, displayDuration, type RoutineFilter } from "@/routine/api";
 import { catalogApi } from "@/catalog/api";
 import { RoutineDialog } from "@/routine/RoutineDialog";
 import { RoutineDetailDialog } from "@/routine/RoutineDetailDialog";
-import { MuscleGroupFilterRow } from "@/library/MuscleGroupFilterRow";
+import {
+  MuscleGroupFilterRow,
+  resolvePrimaryMuscleGroups,
+} from "@/library/MuscleGroupFilterRow";
 import { cn } from "@/lib/utils";
 import { getErrorMessage } from "@/lib/axios";
 import type { Level, MuscleGroupResponse, RoutineResponse } from "@/types/api";
@@ -47,21 +50,8 @@ function RoutineCard({
   onDelete: () => void;
 }) {
   const primaryGroups = useMemo(() => {
-    const seen = new Set<number>();
-    const groups: MuscleGroupResponse[] = [];
-    for (const slot of routine.slots) {
-      if (!slot.exercise) continue;
-      for (const m of slot.exercise.muscles) {
-        if (m.role === "PRIMARY") {
-          const g = muscleGroupMap.get(m.subGroup.groupId);
-          if (g && !seen.has(g.id)) {
-            seen.add(g.id);
-            groups.push(g);
-          }
-        }
-      }
-    }
-    return groups.slice(0, 3);
+    const muscles = routine.slots.flatMap((slot) => slot.exercise?.muscles ?? []);
+    return resolvePrimaryMuscleGroups(muscles, muscleGroupMap, 3);
   }, [routine.slots, muscleGroupMap]);
 
   return (
@@ -84,7 +74,7 @@ function RoutineCard({
               g.icon?.url ? (
                 <img key={g.id} src={g.icon.url} alt={g.name} title={g.name} className="h-9 w-9 object-contain drop-shadow" />
               ) : (
-                <Dumbbell key={g.id} className="h-9 w-9 text-white drop-shadow" title={g.name} />
+                <Dumbbell key={g.id} className="h-9 w-9 text-white drop-shadow" aria-label={g.name} />
               )
             )}
           </div>
@@ -132,9 +122,9 @@ function RoutineCard({
 // ── Filter panel ──────────────────────────────────────────────────────────────
 
 function FilterPanel({ filter, onChange }: { filter: RoutineFilter; onChange: (f: RoutineFilter) => void }) {
-  const { data: equipment = [] } = useQuery({ queryKey: ["catalog", "equipment"], queryFn: catalogApi.listEquipment });
-  const { data: activities = [] } = useQuery({ queryKey: ["catalog", "activities"], queryFn: catalogApi.listActivities });
-  const { data: trainingGoals = [] } = useQuery({ queryKey: ["catalog", "training-goals"], queryFn: catalogApi.listTrainingGoals });
+  const { data: equipment = [] } = useQuery({ queryKey: ["catalog", "equipment"], queryFn: ({ signal }) => catalogApi.listEquipment(signal) });
+  const { data: activities = [] } = useQuery({ queryKey: ["catalog", "activities"], queryFn: ({ signal }) => catalogApi.listActivities(signal) });
+  const { data: trainingGoals = [] } = useQuery({ queryKey: ["catalog", "training-goals"], queryFn: ({ signal }) => catalogApi.listTrainingGoals(signal) });
 
   const toggle = (field: "equipmentIds" | "activityIds" | "trainingGoalIds", id: number) => {
     const cur = filter[field] ?? [];
@@ -181,9 +171,13 @@ function RoutinesTab() {
   const [seedFrom, setSeedFrom] = useState<RoutineResponse | null>(null);
   const [detailRoutine, setDetailRoutine] = useState<RoutineResponse | null>(null);
 
-  const { data: muscleGroups = [] } = useQuery({
+  const {
+    data: muscleGroups = [],
+    isPending: musclesPending,
+    isError: musclesError,
+  } = useQuery({
     queryKey: ["catalog", "muscles"],
-    queryFn: catalogApi.listMuscleGroups,
+    queryFn: ({ signal }) => catalogApi.listMuscleGroups(signal),
   });
 
   const muscleGroupMap = useMemo(() => new Map(muscleGroups.map((g) => [g.id, g])), [muscleGroups]);
@@ -199,15 +193,12 @@ function RoutinesTab() {
   // Don't send muscle ids to the API (backend has no muscle filter for routines)
   const { data, isLoading, error } = useQuery({
     queryKey: ["routines", { equipmentIds: filter.equipmentIds, activityIds: filter.activityIds, trainingGoalIds: filter.trainingGoalIds }, page],
-    queryFn: () =>
-      routineApi.list(
-        {
+    queryFn: ({ signal }) => routineApi.list({
           equipmentIds: filter.equipmentIds,
           activityIds: filter.activityIds,
           trainingGoalIds: filter.trainingGoalIds,
         },
-        page
-      ),
+        page, 12, signal),
     placeholderData: keepPreviousData,
   });
 
@@ -293,6 +284,8 @@ function RoutinesTab() {
         selectedSubGroupIds={subIds}
         onGroupChange={setMuscleGroupIds}
         onSubGroupChange={setMuscleSubGroupIds}
+        isPending={musclesPending}
+        isError={musclesError}
       />
 
       {filterOpen && <FilterPanel filter={filter} onChange={handleFilterChange} />}

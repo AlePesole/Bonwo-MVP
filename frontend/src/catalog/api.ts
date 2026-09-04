@@ -7,15 +7,15 @@ import type {
 } from "@/types/api";
 
 export const catalogApi = {
-  listActivities: () =>
-    api.get<ActivityResponse[]>("/catalog/activities").then((r) => r.data),
+  listActivities: (signal?: AbortSignal) =>
+    api.get<ActivityResponse[]>("/catalog/activities", { signal }).then((r) => r.data),
 
-  listEquipment: () =>
-    api.get<EquipmentResponse[]>("/catalog/equipment").then((r) => r.data),
+  listEquipment: (signal?: AbortSignal) =>
+    api.get<EquipmentResponse[]>("/catalog/equipment", { signal }).then((r) => r.data),
 
-  listTrainingGoals: () =>
-    api.get<TrainingGoalResponse[]>("/catalog/training-goals").then((r) => r.data),
+  listTrainingGoals: (signal?: AbortSignal) =>
+    api.get<TrainingGoalResponse[]>("/catalog/training-goals", { signal }).then((r) => r.data),
 
-  listMuscleGroups: () =>
-    api.get<MuscleGroupResponse[]>("/catalog/muscles").then((r) => r.data),
+  listMuscleGroups: (signal?: AbortSignal) =>
+    api.get<MuscleGroupResponse[]>("/catalog/muscles", { signal }).then((r) => r.data),
 };

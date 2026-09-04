@@ -165,7 +165,7 @@ function ActivitiesTab() {
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["catalog", "activities"],
-    queryFn: adminActivityApi.list,
+    queryFn: ({ signal }) => adminActivityApi.list(signal),
   });
 
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<ActivityForm>({
@@ -281,7 +281,7 @@ function EquipmentTab() {
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["catalog", "equipment"],
-    queryFn: adminEquipmentApi.list,
+    queryFn: ({ signal }) => adminEquipmentApi.list(signal),
   });
 
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<EquipmentForm>({
@@ -394,7 +394,7 @@ function TrainingGoalsTab() {
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["catalog", "training-goals"],
-    queryFn: adminTrainingGoalApi.list,
+    queryFn: ({ signal }) => adminTrainingGoalApi.list(signal),
   });
 
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<GoalForm>({
@@ -770,7 +770,7 @@ function MusclesTab() {
   const qc = useQueryClient();
   const { data, isLoading, error } = useQuery({
     queryKey: ["admin", "muscles"],
-    queryFn: adminMuscleGroupApi.list,
+    queryFn: ({ signal }) => adminMuscleGroupApi.list(signal),
   });
 
   const [expanded, setExpanded] = useState<Set<number>>(new Set());

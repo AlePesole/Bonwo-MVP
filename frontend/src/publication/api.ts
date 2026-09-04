@@ -65,36 +65,40 @@ function buildParams(filter: PublicationFilter, page: number, size: number): URL
 }
 
 export const publicationApi = {
-  listFeed: (filter: PublicationFilter = {}, page = 0, size = 12) =>
+  listFeed: (filter: PublicationFilter = {}, page = 0, size = 12, signal?: AbortSignal) =>
     api
       .get<PageResponse<ExercisePublicationResponse>>(
-        `/exercise-publications?${buildParams(filter, page, size)}`
+        `/exercise-publications?${buildParams(filter, page, size)}`,
+        { signal }
       )
       .then((r) => r.data),
 
-  listMine: (filter: PublicationFilter = {}, page = 0, size = 12) =>
+  listMine: (filter: PublicationFilter = {}, page = 0, size = 12, signal?: AbortSignal) =>
     api
       .get<PageResponse<ExercisePublicationResponse>>(
-        `/exercise-publications/mine?${buildParams(filter, page, size)}`
+        `/exercise-publications/mine?${buildParams(filter, page, size)}`,
+        { signal }
       )
       .then((r) => r.data),
 
-  listLiked: (filter: PublicationFilter = {}, page = 0, size = 12) =>
+  listLiked: (filter: PublicationFilter = {}, page = 0, size = 12, signal?: AbortSignal) =>
     api
       .get<PageResponse<ExercisePublicationResponse>>(
-        `/exercise-publications/liked?${buildParams(filter, page, size)}`
+        `/exercise-publications/liked?${buildParams(filter, page, size)}`,
+        { signal }
       )
       .then((r) => r.data),
 
-  listSaved: (filter: PublicationFilter = {}, page = 0, size = 12) =>
+  listSaved: (filter: PublicationFilter = {}, page = 0, size = 12, signal?: AbortSignal) =>
     api
       .get<PageResponse<ExercisePublicationResponse>>(
-        `/exercise-publications/saved?${buildParams(filter, page, size)}`
+        `/exercise-publications/saved?${buildParams(filter, page, size)}`,
+        { signal }
       )
       .then((r) => r.data),
 
-  getById: (id: number) =>
-    api.get<ExercisePublicationResponse>(`/exercise-publications/${id}`).then((r) => r.data),
+  getById: (id: number, signal?: AbortSignal) =>
+    api.get<ExercisePublicationResponse>(`/exercise-publications/${id}`, { signal }).then((r) => r.data),
 
   create: (body: CreatePublicationPayload) =>
     api.post<ExercisePublicationResponse>("/exercise-publications", body).then((r) => r.data),

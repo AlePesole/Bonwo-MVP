@@ -68,7 +68,7 @@ export function MuscleMap() {
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["catalog", "muscles"],
-    queryFn: catalogApi.listMuscleGroups,
+    queryFn: ({ signal }) => catalogApi.listMuscleGroups(signal),
   });
 
   const subGroups = useMemo(() => data?.flatMap((g) => g.subGroups) ?? [], [data]);

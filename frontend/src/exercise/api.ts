@@ -46,13 +46,15 @@ function buildParams(filter: ExerciseFilter, page: number, size: number): URLSea
 }
 
 export const exerciseApi = {
-  list: (filter: ExerciseFilter = {}, page = 0, size = 12) =>
+  list: (filter: ExerciseFilter = {}, page = 0, size = 12, signal?: AbortSignal) =>
     api
-      .get<PageResponse<ExerciseResponse>>(`/exercises?${buildParams(filter, page, size)}`)
+      .get<PageResponse<ExerciseResponse>>(`/exercises?${buildParams(filter, page, size)}`, {
+        signal,
+      })
       .then((r) => r.data),
 
-  getById: (id: number) =>
-    api.get<ExerciseResponse>(`/exercises/${id}`).then((r) => r.data),
+  getById: (id: number, signal?: AbortSignal) =>
+    api.get<ExerciseResponse>(`/exercises/${id}`, { signal }).then((r) => r.data),
 
   create: (body: ExercisePayload) =>
     api.post<ExerciseResponse>("/exercises", body).then((r) => r.data),

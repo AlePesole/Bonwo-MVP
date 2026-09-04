@@ -4,7 +4,10 @@ import { publicationApi, type PublicationFilter } from "@/publication/api";
 import { PublicationSortSelect } from "@/publication/PublicationSortSelect";
 import { catalogApi } from "@/catalog/api";
 import { ExerciseDetailDialog } from "@/exercise/ExerciseDetailDialog";
-import { MuscleGroupFilterRow } from "@/library/MuscleGroupFilterRow";
+import {
+  MuscleGroupFilterRow,
+  resolvePrimaryMuscleGroups,
+} from "@/library/MuscleGroupFilterRow";
 import { cn, formatTimeAgo } from "@/lib/utils";
 import { getErrorMessage } from "@/lib/axios";
 import type {
@@ -117,20 +120,10 @@ function PublicationCard({
     (user?.id === publication.authorId ? user.username : "") ||
     "Unknown";
   const initial = username[0]?.toUpperCase() ?? "?";
-  const primaryGroups = useMemo(() => {
-    const seen = new Set<number>();
-    const groups: MuscleGroupResponse[] = [];
-    for (const m of ex.muscles) {
-      if (m.role === "PRIMARY") {
-        const g = muscleGroupMap.get(m.subGroup.groupId);
-        if (g && !seen.has(g.id)) {
-          seen.add(g.id);
-          groups.push(g);
-        }
-      }
-    }
-    return groups.slice(0, 3);
-  }, [ex.muscles, muscleGroupMap]);
+  const primaryGroups = useMemo(
+    () => resolvePrimaryMuscleGroups(ex.muscles, muscleGroupMap, 3),
+    [ex.muscles, muscleGroupMap]
+  );
 
   return (
     <div className="group rounded-xl border border-primary/40 bg-card overflow-hidden hover:border-primary transition-colors">
@@ -205,10 +198,11 @@ function PublicationCard({
 function listForSource(
   source: LibraryCollectionSource,
   filter: PublicationFilter,
-  page: number
+  page: number,
+  signal?: AbortSignal
 ): Promise<PageResponse<ExercisePublicationResponse>> {
-  if (source === "saves") return publicationApi.listSaved(filter, page);
-  return publicationApi.listLiked(filter, page);
+  if (source === "saves") return publicationApi.listSaved(filter, page, 12, signal);
+  return publicationApi.listLiked(filter, page, 12, signal);
 }
 
 function ExercisesFeed({ source }: { source: LibraryCollectionSource }) {
@@ -229,9 +223,13 @@ function ExercisesFeed({ source }: { source: LibraryCollectionSource }) {
     });
   }, [debouncedTitle]);
 
-  const { data: muscleGroups = [] } = useQuery({
+  const {
+    data: muscleGroups = [],
+    isPending: musclesPending,
+    isError: musclesError,
+  } = useQuery({
     queryKey: ["catalog", "muscles"],
-    queryFn: catalogApi.listMuscleGroups,
+    queryFn: ({ signal }) => catalogApi.listMuscleGroups(signal),
   });
   const muscleGroupMap = useMemo(() => new Map(muscleGroups.map((g) => [g.id, g])), [muscleGroups]);
 
@@ -250,23 +248,23 @@ function ExercisesFeed({ source }: { source: LibraryCollectionSource }) {
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["publications", source, filter, page],
-    queryFn: () => listForSource(source, filter, page),
+    queryFn: ({ signal }) => listForSource(source, filter, page, signal),
     placeholderData: keepPreviousData,
   });
 
   const { data: equipment = [] } = useQuery({
     queryKey: ["catalog", "equipment"],
-    queryFn: catalogApi.listEquipment,
+    queryFn: ({ signal }) => catalogApi.listEquipment(signal),
     enabled: filterOpen,
   });
   const { data: activities = [] } = useQuery({
     queryKey: ["catalog", "activities"],
-    queryFn: catalogApi.listActivities,
+    queryFn: ({ signal }) => catalogApi.listActivities(signal),
     enabled: filterOpen,
   });
   const { data: trainingGoals = [] } = useQuery({
     queryKey: ["catalog", "training-goals"],
-    queryFn: catalogApi.listTrainingGoals,
+    queryFn: ({ signal }) => catalogApi.listTrainingGoals(signal),
     enabled: filterOpen,
   });
 
@@ -358,6 +356,8 @@ function ExercisesFeed({ source }: { source: LibraryCollectionSource }) {
           }));
           setPage(0);
         }}
+        isPending={musclesPending}
+        isError={musclesError}
       />
 
       {filterOpen && (

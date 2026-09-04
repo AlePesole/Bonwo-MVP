@@ -260,7 +260,7 @@ function ExercisePicker({
 
   const { data: muscleGroups = [] } = useQuery({
     queryKey: ["catalog", "muscles"],
-    queryFn: catalogApi.listMuscleGroups,
+    queryFn: ({ signal }) => catalogApi.listMuscleGroups(signal),
     staleTime: 60_000,
   });
 
@@ -280,21 +280,21 @@ function ExercisePicker({
 
   const { data: mineData, isLoading: mineLoading } = useQuery({
     queryKey: ["exercises-picker", mineFilter, page],
-    queryFn: () => exerciseApi.list(mineFilter, page, 12),
+    queryFn: ({ signal }) => exerciseApi.list(mineFilter, page, 12, signal),
     staleTime: 30_000,
     enabled: source === "mine",
   });
 
   const { data: officialData, isLoading: officialLoading } = useQuery({
     queryKey: ["publications-picker", "official", pubFilter, page],
-    queryFn: () => publicationApi.listFeed({ ...pubFilter, type: "OFFICIAL" }, page, 12),
+    queryFn: ({ signal }) => publicationApi.listFeed({ ...pubFilter, type: "OFFICIAL" }, page, 12, signal),
     staleTime: 30_000,
     enabled: source === "official",
   });
 
   const { data: savesData, isLoading: savesLoading } = useQuery({
     queryKey: ["publications-picker", "saves", pubFilter, page],
-    queryFn: () => publicationApi.listSaved(pubFilter, page, 12),
+    queryFn: ({ signal }) => publicationApi.listSaved(pubFilter, page, 12, signal),
     staleTime: 30_000,
     enabled: source === "saves",
   });
@@ -753,7 +753,7 @@ function DuplicateRoutinePicker({
 
   const { data, isLoading } = useQuery({
     queryKey: ["routines-duplicate-picker", page],
-    queryFn: () => routineApi.list({}, page, 12),
+    queryFn: ({ signal }) => routineApi.list({}, page, 12, signal),
     staleTime: 30_000,
   });
 
@@ -851,9 +851,9 @@ export function RoutineDialog({
   const [sourceThumbnailId, setSourceThumbnailId] = useState<number | undefined>();
   const thumb = useThumbnailUpload();
 
-  const { data: equipment = [] } = useQuery({ queryKey: ["catalog", "equipment"], queryFn: catalogApi.listEquipment, enabled: open });
-  const { data: activities = [] } = useQuery({ queryKey: ["catalog", "activities"], queryFn: catalogApi.listActivities, enabled: open });
-  const { data: trainingGoals = [] } = useQuery({ queryKey: ["catalog", "training-goals"], queryFn: catalogApi.listTrainingGoals, enabled: open });
+  const { data: equipment = [] } = useQuery({ queryKey: ["catalog", "equipment"], queryFn: ({ signal }) => catalogApi.listEquipment(signal), enabled: open });
+  const { data: activities = [] } = useQuery({ queryKey: ["catalog", "activities"], queryFn: ({ signal }) => catalogApi.listActivities(signal), enabled: open });
+  const { data: trainingGoals = [] } = useQuery({ queryKey: ["catalog", "training-goals"], queryFn: ({ signal }) => catalogApi.listTrainingGoals(signal), enabled: open });
 
   const { register, handleSubmit, control, watch, setValue, reset, formState: { errors } } = useForm<RoutineForm>({
     resolver: zodResolver(routineSchema),

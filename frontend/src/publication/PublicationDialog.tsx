@@ -615,22 +615,22 @@ export function PublicationDialog({
 
   const { data: muscleGroups = [] } = useQuery({
     queryKey: ["catalog", "muscles"],
-    queryFn: catalogApi.listMuscleGroups,
+    queryFn: ({ signal }) => catalogApi.listMuscleGroups(signal),
     enabled: open,
   });
   const { data: equipment = [] } = useQuery({
     queryKey: ["catalog", "equipment"],
-    queryFn: catalogApi.listEquipment,
+    queryFn: ({ signal }) => catalogApi.listEquipment(signal),
     enabled: open,
   });
   const { data: activities = [] } = useQuery({
     queryKey: ["catalog", "activities"],
-    queryFn: catalogApi.listActivities,
+    queryFn: ({ signal }) => catalogApi.listActivities(signal),
     enabled: open,
   });
   const { data: trainingGoals = [] } = useQuery({
     queryKey: ["catalog", "training-goals"],
-    queryFn: catalogApi.listTrainingGoals,
+    queryFn: ({ signal }) => catalogApi.listTrainingGoals(signal),
     enabled: open,
   });
 

@@ -135,7 +135,7 @@ export function EditProfileDialog({ open, onClose, profile }: EditProfileDialogP
 
   const { data: activities } = useQuery({
     queryKey: ["catalog", "activities"],
-    queryFn: catalogApi.listActivities,
+    queryFn: ({ signal }) => catalogApi.listActivities(signal),
     staleTime: Infinity,
   });
 

@@ -50,7 +50,7 @@ export function AdminUsersPage() {
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["admin", "users", page],
-    queryFn: () => adminApi.listUsers(page, PAGE_SIZE),
+    queryFn: ({ signal }) => adminApi.listUsers(page, PAGE_SIZE, signal),
   });
 
   const invalidate = () => {

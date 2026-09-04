@@ -5,7 +5,10 @@ import { exerciseApi, type ExerciseFilter } from "@/exercise/api";
 import { catalogApi } from "@/catalog/api";
 import { ExerciseDialog } from "@/exercise/ExerciseDialog";
 import { ExerciseDetailDialog } from "@/exercise/ExerciseDetailDialog";
-import { MuscleGroupFilterRow } from "@/library/MuscleGroupFilterRow";
+import {
+  MuscleGroupFilterRow,
+  resolvePrimaryMuscleGroups,
+} from "@/library/MuscleGroupFilterRow";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { cn } from "@/lib/utils";
 import { getErrorMessage } from "@/lib/axios";
@@ -66,20 +69,10 @@ function ExerciseCard({
   onEdit: () => void;
   onDelete: () => void;
 }) {
-  const primaryGroups = useMemo(() => {
-    const seen = new Set<number>();
-    const groups: MuscleGroupResponse[] = [];
-    for (const m of exercise.muscles) {
-      if (m.role === "PRIMARY") {
-        const g = muscleGroupMap.get(m.subGroup.groupId);
-        if (g && !seen.has(g.id)) {
-          seen.add(g.id);
-          groups.push(g);
-        }
-      }
-    }
-    return groups;
-  }, [exercise.muscles, muscleGroupMap]);
+  const primaryGroups = useMemo(
+    () => resolvePrimaryMuscleGroups(exercise.muscles, muscleGroupMap),
+    [exercise.muscles, muscleGroupMap]
+  );
 
   return (
     <div className="group rounded-xl border border-primary/40 bg-card overflow-hidden hover:border-primary transition-colors">
@@ -111,7 +104,7 @@ function ExerciseCard({
                   className="h-9 w-9 object-contain drop-shadow"
                 />
               ) : (
-                <Dumbbell key={g.id} className="h-9 w-9 text-white drop-shadow" title={g.name} />
+                <Dumbbell key={g.id} className="h-9 w-9 text-white drop-shadow" aria-label={g.name} />
               )
             )}
           </div>
@@ -182,15 +175,15 @@ function FilterPanel({
 }) {
   const { data: equipment = [] } = useQuery({
     queryKey: ["catalog", "equipment"],
-    queryFn: catalogApi.listEquipment,
+    queryFn: ({ signal }) => catalogApi.listEquipment(signal),
   });
   const { data: activities = [] } = useQuery({
     queryKey: ["catalog", "activities"],
-    queryFn: catalogApi.listActivities,
+    queryFn: ({ signal }) => catalogApi.listActivities(signal),
   });
   const { data: trainingGoals = [] } = useQuery({
     queryKey: ["catalog", "training-goals"],
-    queryFn: catalogApi.listTrainingGoals,
+    queryFn: ({ signal }) => catalogApi.listTrainingGoals(signal),
   });
 
   const toggle = (
@@ -260,9 +253,13 @@ function ExercisesTab() {
     });
   }, [debouncedTitle]);
 
-  const { data: muscleGroups = [] } = useQuery({
+  const {
+    data: muscleGroups = [],
+    isPending: musclesPending,
+    isError: musclesError,
+  } = useQuery({
     queryKey: ["catalog", "muscles"],
-    queryFn: catalogApi.listMuscleGroups,
+    queryFn: ({ signal }) => catalogApi.listMuscleGroups(signal),
   });
 
   const muscleIds = filter.muscleGroupIds ?? [];
@@ -280,7 +277,7 @@ function ExercisesTab() {
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["exercises", filter, page],
-    queryFn: () => exerciseApi.list(filter, page),
+    queryFn: ({ signal }) => exerciseApi.list(filter, page, 12, signal),
     placeholderData: keepPreviousData,
   });
 
@@ -295,7 +292,7 @@ function ExercisesTab() {
     if (subIds.length === 1) return list; // already filtered by API
     if (muscleIds.length > 1) {
       return list.filter((ex) =>
-        ex.muscles.some((m) => muscleIds.includes(m.subGroup.groupId))
+        ex.muscles.some((m) => m.subGroup != null && muscleIds.includes(m.subGroup.groupId))
       );
     }
     return list;
@@ -393,6 +390,8 @@ function ExercisesTab() {
         selectedSubGroupIds={subIds}
         onGroupChange={setMuscleGroupIds}
         onSubGroupChange={setMuscleSubGroupIds}
+        isPending={musclesPending}
+        isError={musclesError}
       />
 
       {filterOpen && <FilterPanel filter={filter} onChange={handleFilterChange} />}

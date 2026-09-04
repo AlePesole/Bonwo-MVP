@@ -8,13 +8,16 @@ import type {
 } from "@/types/api";
 
 export const adminApi = {
-  listUsers: (page = 0, size = 20) =>
+  listUsers: (page = 0, size = 20, signal?: AbortSignal) =>
     api
-      .get<PageResponse<UserResponse>>("/admin/users", { params: { page, size, sort: "createdAt,desc" } })
+      .get<PageResponse<UserResponse>>("/admin/users", {
+        params: { page, size, sort: "createdAt,desc" },
+        signal,
+      })
       .then((r) => r.data),
 
-  getUser: (id: number) =>
-    api.get<UserResponse>(`/admin/users/${id}`).then((r) => r.data),
+  getUser: (id: number, signal?: AbortSignal) =>
+    api.get<UserResponse>(`/admin/users/${id}`, { signal }).then((r) => r.data),
 
   updateUser: (id: number, body: AdminUpdateUserRequest) =>
     api.patch<UserResponse>(`/admin/users/${id}`, body).then((r) => r.data),

@@ -47,13 +47,15 @@ function buildParams(filter: RoutineFilter, page: number, size: number): URLSear
 }
 
 export const routineApi = {
-  list: (filter: RoutineFilter = {}, page = 0, size = 12) =>
+  list: (filter: RoutineFilter = {}, page = 0, size = 12, signal?: AbortSignal) =>
     api
-      .get<PageResponse<RoutineResponse>>(`/routines?${buildParams(filter, page, size)}`)
+      .get<PageResponse<RoutineResponse>>(`/routines?${buildParams(filter, page, size)}`, {
+        signal,
+      })
       .then((r) => r.data),
 
-  getById: (id: number) =>
-    api.get<RoutineResponse>(`/routines/${id}`).then((r) => r.data),
+  getById: (id: number, signal?: AbortSignal) =>
+    api.get<RoutineResponse>(`/routines/${id}`, { signal }).then((r) => r.data),
 
   create: (body: RoutinePayload) =>
     api.post<RoutineResponse>("/routines", body).then((r) => r.data),

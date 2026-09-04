@@ -5,7 +5,10 @@ import { catalogApi } from "@/catalog/api";
 import { PublicationDialog } from "@/publication/PublicationDialog";
 import { PublicationSortSelect } from "@/publication/PublicationSortSelect";
 import { ExerciseDetailDialog } from "@/exercise/ExerciseDetailDialog";
-import { MuscleGroupFilterRow } from "@/library/MuscleGroupFilterRow";
+import {
+  MuscleGroupFilterRow,
+  resolvePrimaryMuscleGroups,
+} from "@/library/MuscleGroupFilterRow";
 import { cn, formatTimeAgo } from "@/lib/utils";
 import { getErrorMessage } from "@/lib/axios";
 import type {
@@ -73,20 +76,10 @@ function PublicationCard({
     (user?.id === publication.authorId ? user.username : "") ||
     "Unknown";
   const initial = username[0]?.toUpperCase() ?? "?";
-  const primaryGroups = useMemo(() => {
-    const seen = new Set<number>();
-    const groups: MuscleGroupResponse[] = [];
-    for (const m of ex.muscles) {
-      if (m.role === "PRIMARY") {
-        const g = muscleGroupMap.get(m.subGroup.groupId);
-        if (g && !seen.has(g.id)) {
-          seen.add(g.id);
-          groups.push(g);
-        }
-      }
-    }
-    return groups.slice(0, 3);
-  }, [ex.muscles, muscleGroupMap]);
+  const primaryGroups = useMemo(
+    () => resolvePrimaryMuscleGroups(ex.muscles, muscleGroupMap, 3),
+    [ex.muscles, muscleGroupMap]
+  );
 
   return (
     <div className="group rounded-xl border border-primary/40 bg-card overflow-hidden hover:border-primary transition-colors">
@@ -211,9 +204,13 @@ function PublicationExercisesTab() {
     });
   }, [debouncedTitle]);
 
-  const { data: muscleGroups = [] } = useQuery({
+  const {
+    data: muscleGroups = [],
+    isPending: musclesPending,
+    isError: musclesError,
+  } = useQuery({
     queryKey: ["catalog", "muscles"],
-    queryFn: catalogApi.listMuscleGroups,
+    queryFn: ({ signal }) => catalogApi.listMuscleGroups(signal),
   });
   const muscleGroupMap = useMemo(() => new Map(muscleGroups.map((g) => [g.id, g])), [muscleGroups]);
 
@@ -232,23 +229,23 @@ function PublicationExercisesTab() {
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["publications", "mine", filter, page],
-    queryFn: () => publicationApi.listMine(filter, page),
+    queryFn: ({ signal }) => publicationApi.listMine(filter, page, 12, signal),
     placeholderData: keepPreviousData,
   });
 
   const { data: equipment = [] } = useQuery({
     queryKey: ["catalog", "equipment"],
-    queryFn: catalogApi.listEquipment,
+    queryFn: ({ signal }) => catalogApi.listEquipment(signal),
     enabled: filterOpen,
   });
   const { data: activities = [] } = useQuery({
     queryKey: ["catalog", "activities"],
-    queryFn: catalogApi.listActivities,
+    queryFn: ({ signal }) => catalogApi.listActivities(signal),
     enabled: filterOpen,
   });
   const { data: trainingGoals = [] } = useQuery({
     queryKey: ["catalog", "training-goals"],
-    queryFn: catalogApi.listTrainingGoals,
+    queryFn: ({ signal }) => catalogApi.listTrainingGoals(signal),
     enabled: filterOpen,
   });
 
@@ -369,6 +366,8 @@ function PublicationExercisesTab() {
           }));
           setPage(0);
         }}
+        isPending={musclesPending}
+        isError={musclesError}
       />
 
       {filterOpen && (

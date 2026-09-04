@@ -196,8 +196,12 @@ function ExerciseMuscleMap({
   const subGroupMap = useMemo(() => {
     const map = new Map<number, MuscleSubGroupResponse>();
     for (const g of muscleGroups) for (const s of g.subGroups) map.set(s.id, s);
+    // Prefer catalog; fall back to embedded muscle payload when catalog is empty/stale
+    for (const m of muscles) {
+      if (m.subGroup && !map.has(m.subGroupId)) map.set(m.subGroupId, m.subGroup);
+    }
     return map;
-  }, [muscleGroups]);
+  }, [muscleGroups, muscles]);
 
   const byRole = useMemo(() => ({
     PRIMARY: muscles.filter((m) => m.role === "PRIMARY"),
@@ -607,7 +611,7 @@ function AddToRoutinePicker({
 
   const { data, isLoading } = useQuery({
     queryKey: ["routines-add-exercise-picker", page],
-    queryFn: () => routineApi.list({}, page, 12),
+    queryFn: ({ signal }) => routineApi.list({}, page, 12, signal),
     staleTime: 30_000,
   });
 
@@ -728,7 +732,7 @@ export function ExerciseDetailDialog({
   const pubId = publicationProp?.id ?? exercise?.publicationId ?? null;
   const { data: fetchedPub } = useQuery({
     queryKey: ["publications", "detail", pubId],
-    queryFn: () => publicationApi.getById(pubId!),
+    queryFn: ({ signal }) => publicationApi.getById(pubId!, signal),
     enabled: !!pubId,
     staleTime: 0,
   });
@@ -739,7 +743,7 @@ export function ExerciseDetailDialog({
 
   const { data: muscleGroups = [] } = useQuery({
     queryKey: ["catalog", "muscles"],
-    queryFn: catalogApi.listMuscleGroups,
+    queryFn: ({ signal }) => catalogApi.listMuscleGroups(signal),
     staleTime: 60_000,
     enabled: !!exercise,
   });
