@@ -20,6 +20,12 @@ public interface ExercisePublicationUseCase {
     /** The caller's own publications, regardless of visibility. */
     Page<ExercisePublicationResponse> listMine(Long authorId, ExercisePublicationFilter filter, Pageable pageable);
 
+    /** Publications the caller has liked. */
+    Page<ExercisePublicationResponse> listLiked(Long userId, ExercisePublicationFilter filter, Pageable pageable);
+
+    /** Publications the caller has saved. */
+    Page<ExercisePublicationResponse> listSaved(Long userId, ExercisePublicationFilter filter, Pageable pageable);
+
     ExercisePublicationResponse update(Long id, UpdatePublicationRequest request, Long authorId);
 
     void delete(Long id, Long authorId);

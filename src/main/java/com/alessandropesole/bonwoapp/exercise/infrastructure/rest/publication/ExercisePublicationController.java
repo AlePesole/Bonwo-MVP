@@ -97,6 +97,50 @@ public class ExercisePublicationController {
     }
 
     @Operation(
+            summary = "List my liked publications",
+            description = "Returns the publications the caller has liked. Same filters as the public feed."
+    )
+    @GetMapping("/liked")
+    public ResponseEntity<Page<ExercisePublicationResponse>> listLiked(
+            @AuthenticationPrincipal UserDetails principal,
+            @RequestParam(required = false) Long muscleGroupId,
+            @RequestParam(required = false) Long muscleSubGroupId,
+            @RequestParam(required = false) Set<Long> equipmentIds,
+            @RequestParam(required = false) Set<Long> activityIds,
+            @RequestParam(required = false) Set<Long> trainingGoalIds,
+            @RequestParam(required = false) PublicationType type,
+            @RequestParam(required = false) PublicationSort sort,
+            @RequestParam(required = false) String title,
+            @PageableDefault(size = 20) Pageable pageable) {
+        Long userId = currentUserResolver.resolveId(principal);
+        var filter = new ExercisePublicationFilter(muscleGroupId, muscleSubGroupId,
+                equipmentIds, activityIds, trainingGoalIds, type, sort, title);
+        return ResponseEntity.ok(publicationUseCase.listLiked(userId, filter, pageable));
+    }
+
+    @Operation(
+            summary = "List my saved publications",
+            description = "Returns the publications the caller has saved. Same filters as the public feed."
+    )
+    @GetMapping("/saved")
+    public ResponseEntity<Page<ExercisePublicationResponse>> listSaved(
+            @AuthenticationPrincipal UserDetails principal,
+            @RequestParam(required = false) Long muscleGroupId,
+            @RequestParam(required = false) Long muscleSubGroupId,
+            @RequestParam(required = false) Set<Long> equipmentIds,
+            @RequestParam(required = false) Set<Long> activityIds,
+            @RequestParam(required = false) Set<Long> trainingGoalIds,
+            @RequestParam(required = false) PublicationType type,
+            @RequestParam(required = false) PublicationSort sort,
+            @RequestParam(required = false) String title,
+            @PageableDefault(size = 20) Pageable pageable) {
+        Long userId = currentUserResolver.resolveId(principal);
+        var filter = new ExercisePublicationFilter(muscleGroupId, muscleSubGroupId,
+                equipmentIds, activityIds, trainingGoalIds, type, sort, title);
+        return ResponseEntity.ok(publicationUseCase.listSaved(userId, filter, pageable));
+    }
+
+    @Operation(
             summary = "Get a publication",
             description = "Returns a publication by id and registers a view for the caller, once per user."
     )

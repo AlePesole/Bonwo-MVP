@@ -13,6 +13,7 @@ import { LibraryPage } from "@/library/LibraryPage";
 import { WorkoutsPage } from "@/library/WorkoutsPage";
 import { RoutinesPage } from "@/library/RoutinesPage";
 import ProgramsPage from "@/library/ProgramsPage";
+import { LibraryCollectionPage } from "@/library/LibraryCollectionPage";
 import { PublicationPage } from "@/publication/PublicationPage";
 import { PublicationExercisesPage } from "@/publication/PublicationExercisesPage";
 import { ExplorePage } from "@/explore/ExplorePage";
@@ -74,6 +75,22 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <ProgramsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/library/saves"
+            element={
+              <ProtectedRoute>
+                <LibraryCollectionPage source="saves" />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/library/likes"
+            element={
+              <ProtectedRoute>
+                <LibraryCollectionPage source="likes" />
               </ProtectedRoute>
             }
           />

@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { publicationApi, type PublicationFilter } from "@/publication/api";
 import { catalogApi } from "@/catalog/api";
 import { PublicationDialog } from "@/publication/PublicationDialog";
+import { PublicationSortSelect } from "@/publication/PublicationSortSelect";
 import { ExerciseDetailDialog } from "@/exercise/ExerciseDetailDialog";
 import { MuscleGroupFilterRow } from "@/library/MuscleGroupFilterRow";
 import { cn, formatTimeAgo } from "@/lib/utils";
@@ -299,12 +300,23 @@ function PublicationExercisesTab() {
             </span>
           )}
         </Button>
+        <PublicationSortSelect
+          value={filter.sort}
+          onChange={(sort) => {
+            setFilter((prev) => ({ ...prev, sort }));
+            setPage(0);
+          }}
+        />
         {hasAnyFilter && (
           <Button
             variant="ghost"
             size="sm"
             className="gap-1 text-muted-foreground h-8"
-            onClick={() => { setFilter({}); setTitleDraft(""); setPage(0); }}
+            onClick={() => {
+              setFilter((prev) => ({ sort: prev.sort }));
+              setTitleDraft("");
+              setPage(0);
+            }}
           >
             <X className="h-3.5 w-3.5" /> Clear
           </Button>

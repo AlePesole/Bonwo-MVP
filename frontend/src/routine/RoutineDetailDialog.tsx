@@ -33,6 +33,7 @@ import { Spinner } from "@/components/Spinner";
 import {
   ChevronDown,
   Copy,
+  BadgeCheck,
   Dumbbell,
   Layers,
   Clock,
@@ -153,10 +154,12 @@ function SlotListItem({ slot, onView }: { slot: ExerciseSlotResponse; onView: (e
               </div>
               <div className="flex-1 min-w-0">
                 <span className="text-sm font-medium truncate block">{slot.exercise.title}</span>
-                <span className="text-xs text-muted-foreground">
+                <span className="text-xs text-muted-foreground inline-flex items-center gap-1">
                   {slot.sets.length} set{slot.sets.length !== 1 ? "s" : ""}
                   {slot.exercise.publicationId != null && (
-                    <span className="text-sky-400"> · Published</span>
+                    <span title="Publication" className="inline-flex">
+                      <BadgeCheck className="h-3.5 w-3.5 text-sky-400" />
+                    </span>
                   )}
                 </span>
               </div>

@@ -79,6 +79,20 @@ export const publicationApi = {
       )
       .then((r) => r.data),
 
+  listLiked: (filter: PublicationFilter = {}, page = 0, size = 12) =>
+    api
+      .get<PageResponse<ExercisePublicationResponse>>(
+        `/exercise-publications/liked?${buildParams(filter, page, size)}`
+      )
+      .then((r) => r.data),
+
+  listSaved: (filter: PublicationFilter = {}, page = 0, size = 12) =>
+    api
+      .get<PageResponse<ExercisePublicationResponse>>(
+        `/exercise-publications/saved?${buildParams(filter, page, size)}`
+      )
+      .then((r) => r.data),
+
   getById: (id: number) =>
     api.get<ExercisePublicationResponse>(`/exercise-publications/${id}`).then((r) => r.data),
 

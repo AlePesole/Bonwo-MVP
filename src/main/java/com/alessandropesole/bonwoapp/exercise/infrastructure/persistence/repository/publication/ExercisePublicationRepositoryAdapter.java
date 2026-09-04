@@ -44,7 +44,7 @@ public class ExercisePublicationRepositoryAdapter implements ExercisePublication
                                               Set<Long> equipmentIds, Set<Long> activityIds,
                                               Set<Long> trainingGoalIds, String title, Pageable pageable) {
         var spec = ExercisePublicationSpecifications.matching(null, true, type,
-                muscleSubGroupIds, equipmentIds, activityIds, trainingGoalIds, title);
+                muscleSubGroupIds, equipmentIds, activityIds, trainingGoalIds, title, null, null);
         return jpa.findAll(spec, pageable).map(ExercisePublicationMapper::toDomain);
     }
 
@@ -53,7 +53,25 @@ public class ExercisePublicationRepositoryAdapter implements ExercisePublication
                                                   Set<Long> equipmentIds, Set<Long> activityIds,
                                                   Set<Long> trainingGoalIds, String title, Pageable pageable) {
         var spec = ExercisePublicationSpecifications.matching(authorId, false, type,
-                muscleSubGroupIds, equipmentIds, activityIds, trainingGoalIds, title);
+                muscleSubGroupIds, equipmentIds, activityIds, trainingGoalIds, title, null, null);
+        return jpa.findAll(spec, pageable).map(ExercisePublicationMapper::toDomain);
+    }
+
+    @Override
+    public Page<ExercisePublication> findLikedByUser(Long userId, PublicationType type, Set<Long> muscleSubGroupIds,
+                                                      Set<Long> equipmentIds, Set<Long> activityIds,
+                                                      Set<Long> trainingGoalIds, String title, Pageable pageable) {
+        var spec = ExercisePublicationSpecifications.matching(null, false, type,
+                muscleSubGroupIds, equipmentIds, activityIds, trainingGoalIds, title, userId, null);
+        return jpa.findAll(spec, pageable).map(ExercisePublicationMapper::toDomain);
+    }
+
+    @Override
+    public Page<ExercisePublication> findSavedByUser(Long userId, PublicationType type, Set<Long> muscleSubGroupIds,
+                                                      Set<Long> equipmentIds, Set<Long> activityIds,
+                                                      Set<Long> trainingGoalIds, String title, Pageable pageable) {
+        var spec = ExercisePublicationSpecifications.matching(null, false, type,
+                muscleSubGroupIds, equipmentIds, activityIds, trainingGoalIds, title, null, userId);
         return jpa.findAll(spec, pageable).map(ExercisePublicationMapper::toDomain);
     }
 }

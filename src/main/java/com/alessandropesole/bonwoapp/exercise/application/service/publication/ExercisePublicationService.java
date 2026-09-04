@@ -149,6 +149,26 @@ public class ExercisePublicationService implements ExercisePublicationUseCase {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public Page<ExercisePublicationResponse> listLiked(Long userId, ExercisePublicationFilter filter, Pageable pageable) {
+        Set<Long> muscleSubGroupIds = resolveMuscleSubGroupIds(filter);
+        Pageable sorted = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), resolveSort(filter.sort()));
+        return publicationRepository.findLikedByUser(userId, filter.type(), muscleSubGroupIds,
+                        filter.equipmentIds(), filter.activityIds(), filter.trainingGoalIds(), filter.title(), sorted)
+                .map(p -> toResponse(p, findExercise(p.getExerciseId()), userId));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<ExercisePublicationResponse> listSaved(Long userId, ExercisePublicationFilter filter, Pageable pageable) {
+        Set<Long> muscleSubGroupIds = resolveMuscleSubGroupIds(filter);
+        Pageable sorted = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), resolveSort(filter.sort()));
+        return publicationRepository.findSavedByUser(userId, filter.type(), muscleSubGroupIds,
+                        filter.equipmentIds(), filter.activityIds(), filter.trainingGoalIds(), filter.title(), sorted)
+                .map(p -> toResponse(p, findExercise(p.getExerciseId()), userId));
+    }
+
+    @Override
     public ExercisePublicationResponse update(Long id, UpdatePublicationRequest req, Long authorId) {
         ExercisePublication publication = findOwnedPublication(id, authorId);
         Exercise exercise = findExercise(publication.getExerciseId());

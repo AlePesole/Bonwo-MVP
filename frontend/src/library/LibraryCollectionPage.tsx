@@ -1,5 +1,5 @@
+import { Link, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { useSearchParams } from "react-router-dom";
 import { publicationApi, type PublicationFilter } from "@/publication/api";
 import { PublicationSortSelect } from "@/publication/PublicationSortSelect";
 import { catalogApi } from "@/catalog/api";
@@ -11,6 +11,7 @@ import type {
   ExercisePublicationResponse,
   Level,
   MuscleGroupResponse,
+  PageResponse,
   PublicationType,
 } from "@/types/api";
 import { Button } from "@/components/ui/button";
@@ -19,27 +20,23 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ApiError } from "@/components/ApiError";
 import { PageSpinner } from "@/components/Spinner";
 import {
-  BadgeCheck,
+  Bookmark,
   CalendarDays,
+  ChevronLeft,
   Dumbbell,
   Eye,
+  Heart,
   Layers,
   Search,
   SlidersHorizontal,
-  Users,
   X,
 } from "lucide-react";
 import { useAuth } from "@/auth/AuthContext";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useEffect, useMemo, useState } from "react";
-import {
-  exploreScopeLabel,
-  exploreScopeToType,
-  parseExploreKind,
-  parseExploreScope,
-  type ExploreKind,
-  type ExploreScope,
-} from "./scope";
+
+export type LibraryCollectionSource = "saves" | "likes";
+type LibraryKind = "exercises" | "routines" | "programs";
 
 const LEVEL_COLOR: Record<Level, string> = {
   BEGINNER: "text-emerald-400 border-emerald-500/50",
@@ -51,6 +48,27 @@ const TYPE_BADGE: Record<PublicationType, string> = {
   COMMUNITY: "text-sky-300 border-sky-500/40",
   OFFICIAL: "text-violet-300 border-violet-500/40",
 };
+
+const SOURCE_META: Record<
+  LibraryCollectionSource,
+  { title: string; empty: string; icon: React.ReactNode }
+> = {
+  saves: {
+    title: "Saves",
+    empty: "No saved publications yet.",
+    icon: <Bookmark className="h-10 w-10 text-muted-foreground/30 mx-auto" />,
+  },
+  likes: {
+    title: "Likes",
+    empty: "No liked publications yet.",
+    icon: <Heart className="h-10 w-10 text-muted-foreground/30 mx-auto" />,
+  },
+};
+
+function parseKind(value: string | null): LibraryKind {
+  if (value === "routines" || value === "programs") return value;
+  return "exercises";
+}
 
 function SegmentedControl<T extends string>({
   value,
@@ -83,7 +101,7 @@ function SegmentedControl<T extends string>({
   );
 }
 
-function ExplorePublicationCard({
+function PublicationCard({
   publication,
   muscleGroupMap,
   onView,
@@ -184,20 +202,17 @@ function ExplorePublicationCard({
   );
 }
 
-function ComingSoonPanel({ label }: { label: string }) {
-  return (
-    <div className="text-center py-16 space-y-3 rounded-xl border border-border/60 bg-card/40">
-      <p className="text-muted-foreground text-sm">
-        {label} publications are coming soon.
-      </p>
-    </div>
-  );
+function listForSource(
+  source: LibraryCollectionSource,
+  filter: PublicationFilter,
+  page: number
+): Promise<PageResponse<ExercisePublicationResponse>> {
+  if (source === "saves") return publicationApi.listSaved(filter, page);
+  return publicationApi.listLiked(filter, page);
 }
 
-function ExploreExercisesFeed({ scope }: { scope: ExploreScope }) {
-  const scopeLabel = exploreScopeLabel(scope);
-  const publicationType = exploreScopeToType(scope);
-
+function ExercisesFeed({ source }: { source: LibraryCollectionSource }) {
+  const meta = SOURCE_META[source];
   const [filter, setFilter] = useState<PublicationFilter>({});
   const [titleDraft, setTitleDraft] = useState("");
   const debouncedTitle = useDebouncedValue(titleDraft.trim(), 350);
@@ -214,14 +229,6 @@ function ExploreExercisesFeed({ scope }: { scope: ExploreScope }) {
     setPage(0);
   }, [debouncedTitle]);
 
-  useEffect(() => {
-    setPage(0);
-    setFilter({});
-    setTitleDraft("");
-    setFilterOpen(false);
-    setDetail(null);
-  }, [scope]);
-
   const { data: muscleGroups = [] } = useQuery({
     queryKey: ["catalog", "muscles"],
     queryFn: catalogApi.listMuscleGroups,
@@ -234,18 +241,17 @@ function ExploreExercisesFeed({ scope }: { scope: ExploreScope }) {
   const panelFilters =
     (filter.equipmentIds?.length ?? 0) +
     (filter.activityIds?.length ?? 0) +
-    (filter.trainingGoalIds?.length ?? 0);
+    (filter.trainingGoalIds?.length ?? 0) +
+    (filter.type ? 1 : 0);
   const hasAnyFilter =
     !!filter.title ||
     panelFilters > 0 ||
     muscleIds.length > 0 ||
     subIds.length > 0;
 
-  const feedFilter: PublicationFilter = { ...filter, type: publicationType };
-
   const { data, isLoading, error } = useQuery({
-    queryKey: ["publications", "feed", scope, feedFilter, page],
-    queryFn: () => publicationApi.listFeed(feedFilter, page),
+    queryKey: ["publications", source, filter, page],
+    queryFn: () => listForSource(source, filter, page),
   });
 
   const { data: equipment = [] } = useQuery({
@@ -355,6 +361,25 @@ function ExploreExercisesFeed({ scope }: { scope: ExploreScope }) {
 
       {filterOpen && (
         <div className="rounded-xl border border-primary/40 bg-card p-4 space-y-4">
+          <div className="space-y-1.5">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Type</p>
+            <div className="flex flex-wrap gap-1.5">
+              {(["COMMUNITY", "OFFICIAL"] as PublicationType[]).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => {
+                    setFilter((prev) => ({ ...prev, type: prev.type === t ? undefined : t }));
+                    setPage(0);
+                  }}
+                  className={chipClass(filter.type === t)}
+                >
+                  {t[0] + t.slice(1).toLowerCase()}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {(
             [
               { label: "Equipment", field: "equipmentIds" as const, items: equipment },
@@ -391,17 +416,15 @@ function ExploreExercisesFeed({ scope }: { scope: ExploreScope }) {
         <>
           {!data?.content.length ? (
             <div className="text-center py-16 space-y-3">
-              <Dumbbell className="h-10 w-10 text-muted-foreground/30 mx-auto" />
+              {meta.icon}
               <p className="text-muted-foreground text-sm">
-                {hasAnyFilter
-                  ? "No publications match the current filters."
-                  : `No ${scopeLabel.toLowerCase()} exercise publications yet.`}
+                {hasAnyFilter ? "No publications match the current filters." : meta.empty}
               </p>
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
               {data.content.map((pub) => (
-                <ExplorePublicationCard
+                <PublicationCard
                   key={pub.id}
                   publication={pub}
                   muscleGroupMap={muscleGroupMap}
@@ -430,19 +453,12 @@ function ExploreExercisesFeed({ scope }: { scope: ExploreScope }) {
   );
 }
 
-export function ExplorePage() {
+export function LibraryCollectionPage({ source }: { source: LibraryCollectionSource }) {
+  const meta = SOURCE_META[source];
   const [params, setParams] = useSearchParams();
-  const scope = parseExploreScope(params.get("scope"));
-  const kind = parseExploreKind(params.get("kind"));
+  const kind = parseKind(params.get("kind"));
 
-  const setScope = (next: ExploreScope) => {
-    const nextParams = new URLSearchParams(params);
-    if (next === "official") nextParams.delete("scope");
-    else nextParams.set("scope", next);
-    setParams(nextParams, { replace: true });
-  };
-
-  const setKind = (next: ExploreKind) => {
+  const setKind = (next: LibraryKind) => {
     const nextParams = new URLSearchParams(params);
     if (next === "exercises") nextParams.delete("kind");
     else nextParams.set("kind", next);
@@ -451,38 +467,37 @@ export function ExplorePage() {
 
   return (
     <div className="max-w-5xl mx-auto">
-      <div className="mb-6 text-center space-y-4">
-        <div>
-          <h1 className="text-3xl font-bold">Explore</h1>
-          <p className="text-muted-foreground mt-1">
-            Browse official and community publications.
-          </p>
-        </div>
+      <Link
+        to="/library"
+        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4"
+      >
+        <ChevronLeft className="h-4 w-4" /> Library
+      </Link>
 
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-          <SegmentedControl
-            value={scope}
-            onChange={setScope}
-            options={[
-              { value: "official", label: "Official", icon: <BadgeCheck className="h-3.5 w-3.5" /> },
-              { value: "community", label: "Community", icon: <Users className="h-3.5 w-3.5" /> },
-            ]}
-          />
-          <SegmentedControl
-            value={kind}
-            onChange={setKind}
-            options={[
-              { value: "exercises", label: "Exercises", icon: <Dumbbell className="h-3.5 w-3.5" /> },
-              { value: "routines", label: "Routines", icon: <Layers className="h-3.5 w-3.5" /> },
-              { value: "programs", label: "Programs", icon: <CalendarDays className="h-3.5 w-3.5" /> },
-            ]}
-          />
-        </div>
+      <div className="mb-6 text-center space-y-4">
+        <h1 className="text-3xl font-bold">{meta.title}</h1>
+        <SegmentedControl
+          value={kind}
+          onChange={setKind}
+          options={[
+            { value: "exercises", label: "Exercises", icon: <Dumbbell className="h-3.5 w-3.5" /> },
+            { value: "routines", label: "Routines", icon: <Layers className="h-3.5 w-3.5" /> },
+            { value: "programs", label: "Programs", icon: <CalendarDays className="h-3.5 w-3.5" /> },
+          ]}
+        />
       </div>
 
-      {kind === "exercises" && <ExploreExercisesFeed scope={scope} />}
-      {kind === "routines" && <ComingSoonPanel label="Routine" />}
-      {kind === "programs" && <ComingSoonPanel label="Program" />}
+      {kind === "exercises" && <ExercisesFeed source={source} />}
+      {kind === "routines" && (
+        <div className="text-center py-16 text-sm text-muted-foreground rounded-xl border border-border/60 bg-card/40">
+          Routine publications are coming soon.
+        </div>
+      )}
+      {kind === "programs" && (
+        <div className="text-center py-16 text-sm text-muted-foreground rounded-xl border border-border/60 bg-card/40">
+          Program publications are coming soon.
+        </div>
+      )}
     </div>
   );
 }

@@ -28,6 +28,7 @@ import type {
   ExerciseResponse,
   ImageUploadResponse,
   Level,
+  PublicationType,
   RoutineResponse,
   SetType,
   WeightMode,
@@ -242,7 +243,7 @@ function ExercisePicker({
   onBack: () => void;
   excludeIds: number[];
 }) {
-  const [source, setSource] = useState<"mine" | "published">("mine");
+  const [source, setSource] = useState<"mine" | "official" | "saves">("mine");
   const [title, setTitle] = useState("");
   const debouncedTitle = useDebouncedValue(title.trim(), 350);
   const [muscleGroupId, setMuscleGroupId] = useState<number | "">("");
@@ -282,21 +283,40 @@ function ExercisePicker({
     enabled: source === "mine",
   });
 
-  const { data: pubData, isLoading: pubLoading } = useQuery({
-    queryKey: ["publications-picker", pubFilter, page],
-    queryFn: () => publicationApi.listFeed(pubFilter, page, 12),
+  const { data: officialData, isLoading: officialLoading } = useQuery({
+    queryKey: ["publications-picker", "official", pubFilter, page],
+    queryFn: () => publicationApi.listFeed({ ...pubFilter, type: "OFFICIAL" }, page, 12),
     staleTime: 30_000,
-    enabled: source === "published",
+    enabled: source === "official",
   });
 
-  const isLoading = source === "mine" ? mineLoading : pubLoading;
-  const exercises: ExerciseResponse[] =
+  const { data: savesData, isLoading: savesLoading } = useQuery({
+    queryKey: ["publications-picker", "saves", pubFilter, page],
+    queryFn: () => publicationApi.listSaved(pubFilter, page, 12),
+    staleTime: 30_000,
+    enabled: source === "saves",
+  });
+
+  const isLoading =
+    source === "mine" ? mineLoading : source === "official" ? officialLoading : savesLoading;
+
+  type PickerItem = { exercise: ExerciseResponse; publicationType?: PublicationType };
+  const items: PickerItem[] =
     source === "mine"
-      ? (mineData?.content ?? [])
-      : (pubData?.content ?? []).map((p) => p.exercise);
-  const pageData = source === "mine" ? mineData : pubData;
+      ? (mineData?.content ?? []).map((ex) => ({ exercise: ex }))
+      : source === "official"
+        ? (officialData?.content ?? []).map((p) => ({ exercise: p.exercise, publicationType: p.type }))
+        : (savesData?.content ?? []).map((p) => ({ exercise: p.exercise, publicationType: p.type }));
+  const pageData =
+    source === "mine" ? mineData : source === "official" ? officialData : savesData;
 
   const selectClass = "h-7 rounded-md border border-input bg-background px-2 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring flex-1 min-w-0";
+
+  const sourceTabs: Array<{ id: typeof source; label: string }> = [
+    { id: "mine", label: "My exercises" },
+    { id: "official", label: "Official" },
+    { id: "saves", label: "Saves" },
+  ];
 
   return (
     <div className="space-y-3">
@@ -314,26 +334,21 @@ function ExercisePicker({
       </div>
 
       <div className="flex gap-1 p-0.5 rounded-lg bg-muted/50 border border-border">
-        <button
-          type="button"
-          onClick={() => { setSource("mine"); setPage(0); }}
-          className={cn(
-            "flex-1 text-xs font-medium py-1.5 rounded-md transition-colors",
-            source === "mine" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          My exercises
-        </button>
-        <button
-          type="button"
-          onClick={() => { setSource("published"); setPage(0); }}
-          className={cn(
-            "flex-1 text-xs font-medium py-1.5 rounded-md transition-colors",
-            source === "published" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          Published
-        </button>
+        {sourceTabs.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => { setSource(tab.id); setPage(0); }}
+            className={cn(
+              "flex-1 text-xs font-medium py-1.5 rounded-md transition-colors",
+              source === tab.id
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
 
       <div className="flex items-center gap-2 flex-wrap">
@@ -372,11 +387,11 @@ function ExercisePicker({
 
       {isLoading ? (
         <div className="flex justify-center py-6"><Spinner size="sm" label="" /></div>
-      ) : exercises.length === 0 ? (
+      ) : items.length === 0 ? (
         <p className="text-sm text-muted-foreground text-center py-6">No exercises found.</p>
       ) : (
         <div className="space-y-1.5 overflow-y-auto max-h-[240px]">
-          {exercises.map((ex) => {
+          {items.map(({ exercise: ex, publicationType }) => {
             const disabled = excludeIds.includes(ex.id);
             return (
               <button
@@ -400,8 +415,11 @@ function ExercisePicker({
                 </div>
                 <div className="flex-1 min-w-0">
                   <span className="text-sm truncate block">{ex.title}</span>
-                  {ex.publicationId != null && (
-                    <span className="text-[10px] text-sky-400">Published</span>
+                  {publicationType === "OFFICIAL" && (
+                    <span className="text-[10px] text-violet-400">Official</span>
+                  )}
+                  {publicationType === "COMMUNITY" && (
+                    <span className="text-[10px] text-sky-400">Community</span>
                   )}
                 </div>
                 <span className={cn("text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0", LEVEL_BADGE[ex.level] ?? "bg-muted text-muted-foreground")}>

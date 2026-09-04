@@ -5,6 +5,8 @@ import com.alessandropesole.bonwoapp.exercise.domain.model.publication.Visibilit
 import com.alessandropesole.bonwoapp.exercise.infrastructure.persistence.entity.ExerciseJpaEntity;
 import com.alessandropesole.bonwoapp.exercise.infrastructure.persistence.entity.MuscleEntryEmbeddable;
 import com.alessandropesole.bonwoapp.exercise.infrastructure.persistence.entity.publication.ExercisePublicationJpaEntity;
+import com.alessandropesole.bonwoapp.exercise.infrastructure.persistence.entity.publication.ExercisePublicationLikeJpaEntity;
+import com.alessandropesole.bonwoapp.exercise.infrastructure.persistence.entity.publication.ExercisePublicationSaveJpaEntity;
 import jakarta.persistence.criteria.Root;
 import org.springframework.data.jpa.domain.Specification;
 
@@ -18,13 +20,14 @@ public final class ExercisePublicationSpecifications {
     /**
      * exercise_publications.exercise_id has no mapped JPA association to exercises (same convention
      * as the rest of the app — aggregates only reference each other via plain FK columns), so catalog
-     * filters need a second, manually-correlated root instead of Root.join(...).
+     * filters need a second, manually-correlated root instead of Root.join(...). Same reasoning for
+     * likedByUserId/savedByUserId against the like/save join tables.
      */
     public static Specification<ExercisePublicationJpaEntity> matching(Long authorId, boolean onlyPublicVisibility,
                                                                         PublicationType type,
                                                                         Set<Long> muscleSubGroupIds, Set<Long> equipmentIds,
                                                                         Set<Long> activityIds, Set<Long> trainingGoalIds,
-                                                                        String title) {
+                                                                        String title, Long likedByUserId, Long savedByUserId) {
         return (root, query, cb) -> {
             query.distinct(true);
             Root<ExerciseJpaEntity> exerciseRoot = query.from(ExerciseJpaEntity.class);
@@ -42,6 +45,18 @@ public final class ExercisePublicationSpecifications {
             }
             if (title != null && !title.isBlank()) {
                 predicate = cb.and(predicate, cb.like(cb.lower(exerciseRoot.get("title")), "%" + title.toLowerCase() + "%"));
+            }
+            if (likedByUserId != null) {
+                Root<ExercisePublicationLikeJpaEntity> likeRoot = query.from(ExercisePublicationLikeJpaEntity.class);
+                predicate = cb.and(predicate,
+                        cb.equal(root.get("id"), likeRoot.get("publicationId")),
+                        cb.equal(likeRoot.get("userId"), likedByUserId));
+            }
+            if (savedByUserId != null) {
+                Root<ExercisePublicationSaveJpaEntity> saveRoot = query.from(ExercisePublicationSaveJpaEntity.class);
+                predicate = cb.and(predicate,
+                        cb.equal(root.get("id"), saveRoot.get("publicationId")),
+                        cb.equal(saveRoot.get("userId"), savedByUserId));
             }
 
             if (muscleSubGroupIds != null && !muscleSubGroupIds.isEmpty()) {
