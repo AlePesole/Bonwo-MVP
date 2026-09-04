@@ -123,6 +123,31 @@ export interface ExerciseResponse {
   activities: ActivityResponse[];
   trainingGoals: TrainingGoalResponse[];
   createdAt: string;
+  /** Non-null when this exercise belongs to an ExercisePublication. */
+  publicationId: number | null;
+}
+
+// ── Exercise publication ──────────────────────────────────────────────────────
+
+export type PublicationType = "COMMUNITY" | "OFFICIAL";
+export type Visibility = "PUBLIC";
+export type PublicationSort = "RECENT" | "MOST_LIKED" | "MOST_VIEWED" | "MOST_USED";
+
+export interface ExercisePublicationResponse {
+  id: number;
+  exercise: ExerciseResponse;
+  authorId: number;
+  authorUsername: string | null;
+  authorAvatar: ImageResponse | null;
+  type: PublicationType;
+  visibility: Visibility;
+  likesCount: number;
+  savesCount: number;
+  viewsCount: number;
+  usesCount: number;
+  likedByMe: boolean;
+  savedByMe: boolean;
+  publishedAt: string;
 }
 
 // ── Routine ───────────────────────────────────────────────────────────────────

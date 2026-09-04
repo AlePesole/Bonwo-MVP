@@ -21,7 +21,9 @@ import { CSS } from "@dnd-kit/utilities";
 import { programApi } from "./api";
 import { routineApi, formatDuration, parseDuration } from "@/routine/api";
 import { exerciseApi } from "@/exercise/api";
+import { publicationApi } from "@/publication/api";
 import { catalogApi } from "@/catalog/api";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { api, getErrorMessage } from "@/lib/axios";
 import { cn } from "@/lib/utils";
 import type {
@@ -388,27 +390,46 @@ function ExercisePicker({
   onSelect: (ex: ExerciseResponse) => void;
   onBack: () => void;
 }) {
+  const [source, setSource] = useState<"mine" | "published">("mine");
   const [title, setTitle] = useState("");
+  const debouncedTitle = useDebouncedValue(title.trim(), 350);
   const [muscleGroupId, setMuscleGroupId] = useState<number | "">("");
   const [muscleSubGroupId, setMuscleSubGroupId] = useState<number | "">("");
   const [page, setPage] = useState(0);
 
   const handleGroupChange = (v: number | "") => { setMuscleGroupId(v); setMuscleSubGroupId(""); setPage(0); };
 
+  useEffect(() => { setPage(0); }, [debouncedTitle]);
+
   const { data: muscleGroups = [] } = useQuery({ queryKey: ["catalog", "muscles"], queryFn: catalogApi.listMuscleGroups, staleTime: 60_000 });
   const selectedGroup = muscleGroups.find((g) => g.id === muscleGroupId);
 
   const filter = {
-    title: title || undefined,
-    muscleGroupId: muscleGroupId || undefined,
-    muscleSubGroupId: muscleSubGroupId || undefined,
+    title: debouncedTitle || undefined,
+    muscleGroupIds: muscleGroupId ? [Number(muscleGroupId)] : undefined,
+    muscleSubGroupIds: muscleSubGroupId ? [Number(muscleSubGroupId)] : undefined,
   };
 
-  const { data, isLoading } = useQuery({
+  const { data: mineData, isLoading: mineLoading } = useQuery({
     queryKey: ["exercises-picker-prog", filter, page],
     queryFn: () => exerciseApi.list(filter, page, 12),
     staleTime: 30_000,
+    enabled: source === "mine",
   });
+
+  const { data: pubData, isLoading: pubLoading } = useQuery({
+    queryKey: ["publications-picker-prog", filter, page],
+    queryFn: () => publicationApi.listFeed(filter, page, 12),
+    staleTime: 30_000,
+    enabled: source === "published",
+  });
+
+  const isLoading = source === "mine" ? mineLoading : pubLoading;
+  const exercises: ExerciseResponse[] =
+    source === "mine"
+      ? (mineData?.content ?? [])
+      : (pubData?.content ?? []).map((p) => p.exercise);
+  const pageData = source === "mine" ? mineData : pubData;
 
   const selectClass = "h-7 rounded-md border border-input bg-background px-2 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring flex-1 min-w-0";
 
@@ -420,11 +441,34 @@ function ExercisePicker({
         </button>
         <Input
           value={title}
-          onChange={(e) => { setTitle(e.target.value); setPage(0); }}
+          onChange={(e) => setTitle(e.target.value)}
           placeholder="Search exercises…"
           className="h-8 text-sm flex-1"
           autoFocus
         />
+      </div>
+
+      <div className="flex gap-1 p-0.5 rounded-lg bg-muted/50 border border-border">
+        <button
+          type="button"
+          onClick={() => { setSource("mine"); setPage(0); }}
+          className={cn(
+            "flex-1 text-xs font-medium py-1.5 rounded-md transition-colors",
+            source === "mine" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          My exercises
+        </button>
+        <button
+          type="button"
+          onClick={() => { setSource("published"); setPage(0); }}
+          className={cn(
+            "flex-1 text-xs font-medium py-1.5 rounded-md transition-colors",
+            source === "published" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          Published
+        </button>
       </div>
 
       <div className="flex items-center gap-2 flex-wrap">
@@ -447,11 +491,11 @@ function ExercisePicker({
 
       {isLoading ? (
         <div className="flex justify-center py-6"><Spinner size="sm" label="" /></div>
-      ) : (data?.content ?? []).length === 0 ? (
+      ) : exercises.length === 0 ? (
         <p className="text-sm text-muted-foreground text-center py-6">No exercises found.</p>
       ) : (
         <div className="space-y-1.5 overflow-y-auto max-h-[240px]">
-          {(data?.content ?? []).map((ex) => (
+          {exercises.map((ex) => (
             <button
               key={ex.id}
               type="button"
@@ -465,7 +509,12 @@ function ExercisePicker({
                   <Dumbbell className="h-4 w-4 text-muted-foreground/50" />
                 )}
               </div>
-              <span className="text-sm flex-1 truncate">{ex.title}</span>
+              <div className="flex-1 min-w-0">
+                <span className="text-sm truncate block">{ex.title}</span>
+                {ex.publicationId != null && (
+                  <span className="text-[10px] text-sky-400">Published</span>
+                )}
+              </div>
               <span className={cn("text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0", LEVEL_BADGE[ex.level] ?? "bg-muted text-muted-foreground")}>
                 {ex.level[0] + ex.level.slice(1).toLowerCase()}
               </span>
@@ -474,11 +523,11 @@ function ExercisePicker({
         </div>
       )}
 
-      {data && data.totalPages > 1 && (
+      {pageData && pageData.totalPages > 1 && (
         <div className="flex justify-center items-center gap-2">
-          <button type="button" disabled={data.first} onClick={() => setPage((p) => p - 1)} className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-40 px-2 py-1 rounded border border-border">← Prev</button>
-          <span className="text-xs text-muted-foreground">{page + 1} / {data.totalPages}</span>
-          <button type="button" disabled={data.last} onClick={() => setPage((p) => p + 1)} className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-40 px-2 py-1 rounded border border-border">Next →</button>
+          <button type="button" disabled={pageData.first} onClick={() => setPage((p) => p - 1)} className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-40 px-2 py-1 rounded border border-border">← Prev</button>
+          <span className="text-xs text-muted-foreground">{page + 1} / {pageData.totalPages}</span>
+          <button type="button" disabled={pageData.last} onClick={() => setPage((p) => p + 1)} className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-40 px-2 py-1 rounded border border-border">Next →</button>
         </div>
       )}
     </div>

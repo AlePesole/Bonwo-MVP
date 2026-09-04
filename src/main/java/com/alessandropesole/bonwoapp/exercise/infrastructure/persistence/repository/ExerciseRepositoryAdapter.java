@@ -30,9 +30,9 @@ public class ExerciseRepositoryAdapter implements ExerciseRepository {
 
     @Override
     public Page<Exercise> findByOwner(Long ownerId, Set<Long> muscleSubGroupIds, Set<Long> equipmentIds,
-                                      Set<Long> activityIds, Set<Long> trainingGoalIds, Pageable pageable) {
+                                      Set<Long> activityIds, Set<Long> trainingGoalIds, String title, Pageable pageable) {
         var spec = ExerciseSpecifications.matching(ownerId, muscleSubGroupIds, equipmentIds,
-                activityIds, trainingGoalIds);
+                activityIds, trainingGoalIds, title);
         return jpa.findAll(spec, pageable).map(ExerciseMapper::toDomain);
     }
 

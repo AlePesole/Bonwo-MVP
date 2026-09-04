@@ -345,9 +345,6 @@ export default function ProgramsPage() {
 
       <div className="mb-6 text-center">
         <h1 className="text-3xl font-bold">My Programs</h1>
-        <p className="text-muted-foreground mt-1">
-          Exercises · Routines · Programs
-        </p>
       </div>
 
       <Tabs defaultValue="programs">

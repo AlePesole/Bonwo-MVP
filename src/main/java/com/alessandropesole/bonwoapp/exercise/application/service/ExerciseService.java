@@ -19,6 +19,7 @@ import com.alessandropesole.bonwoapp.exercise.application.dto.MuscleEntryRespons
 import com.alessandropesole.bonwoapp.exercise.application.dto.UpdateExerciseRequest;
 import com.alessandropesole.bonwoapp.exercise.application.mapper.ExerciseDtoMapper;
 import com.alessandropesole.bonwoapp.exercise.application.mapper.MuscleEntryDtoMapper;
+import com.alessandropesole.bonwoapp.exercise.application.service.publication.ExerciseVisibilityResolver;
 import com.alessandropesole.bonwoapp.exercise.domain.model.Exercise;
 import com.alessandropesole.bonwoapp.exercise.domain.model.ExerciseFilter;
 import com.alessandropesole.bonwoapp.exercise.domain.model.MuscleEntry;
@@ -53,6 +54,7 @@ public class ExerciseService implements ExerciseUseCase {
     private final MediaService mediaService;
     private final MediaResolver mediaResolver;
     private final MuscleSummaryCalculator muscleSummaryCalculator;
+    private final ExerciseVisibilityResolver exerciseVisibilityResolver;
 
     @Override
     public ExerciseResponse create(CreateExerciseRequest req, Long ownerId) {
@@ -79,12 +81,13 @@ public class ExerciseService implements ExerciseUseCase {
     @Override
     @Transactional(readOnly = true)
     public ExerciseResponse getById(Long id, Long ownerId) {
-        return toResponse(findOwned(id, ownerId));
+        return toResponse(findVisible(id, ownerId));
     }
 
     @Override
     public ExerciseResponse update(Long id, UpdateExerciseRequest req, Long ownerId) {
         Exercise exercise = findOwned(id, ownerId);
+        requireNotPublished(exercise);
 
         if (req.equipmentIds() != null || req.activityIds() != null || req.trainingGoalIds() != null) {
             catalogValidator.validate(
@@ -124,6 +127,7 @@ public class ExerciseService implements ExerciseUseCase {
     @Override
     public void delete(Long id, Long ownerId) {
         Exercise exercise = findOwned(id, ownerId);
+        requireNotPublished(exercise);
         mediaService.deleteVideoIfOwner(exercise.getMainVideoId(), ownerId);
         exerciseRepository.deleteById(id);
     }
@@ -133,7 +137,7 @@ public class ExerciseService implements ExerciseUseCase {
     public Page<ExerciseResponse> listMine(Long ownerId, ExerciseFilter filter, Pageable pageable) {
         Set<Long> muscleSubGroupIds = resolveMuscleSubGroupIds(filter);
         return exerciseRepository.findByOwner(ownerId, muscleSubGroupIds,
-                        filter.equipmentIds(), filter.activityIds(), filter.trainingGoalIds(), pageable)
+                        filter.equipmentIds(), filter.activityIds(), filter.trainingGoalIds(), filter.title(), pageable)
                 .map(this::toResponse);
     }
 
@@ -155,6 +159,20 @@ public class ExerciseService implements ExerciseUseCase {
         if (!exercise.isOwnedBy(ownerId))
             throw new ForbiddenOperationException("You don't own this exercise");
         return exercise;
+    }
+
+    private Exercise findVisible(Long id, Long viewerId) {
+        Exercise exercise = exerciseRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Exercise", id));
+        if (!exerciseVisibilityResolver.isVisible(exercise, viewerId))
+            throw new ForbiddenOperationException("You don't own this exercise");
+        return exercise;
+    }
+
+    private void requireNotPublished(Exercise exercise) {
+        if (exercise.getPublicationId() != null)
+            throw new ForbiddenOperationException(
+                    "This exercise belongs to a publication — edit it via /exercise-publications instead");
     }
 
     private ExerciseResponse toResponse(Exercise e) {

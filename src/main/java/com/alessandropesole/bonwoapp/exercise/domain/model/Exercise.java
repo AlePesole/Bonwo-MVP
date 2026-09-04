@@ -29,12 +29,23 @@ public class Exercise extends AggregateRoot {
     private Set<Long> activityIds;
     private Set<Long> trainingGoalIds;
     private Instant createdAt;
+    private Long publicationId;
 
     public static Exercise create(Long ownerId, String title, Level level,
                                   Long thumbnailId, Long mainVideoId,
                                   String description, String instructions,
                                   List<MuscleEntry> muscles, MuscleSummary muscleSummary,
                                   Set<Long> equipmentIds, Set<Long> activityIds, Set<Long> trainingGoalIds) {
+        return create(ownerId, title, level, thumbnailId, mainVideoId, description, instructions,
+                muscles, muscleSummary, equipmentIds, activityIds, trainingGoalIds, null);
+    }
+
+    public static Exercise create(Long ownerId, String title, Level level,
+                                  Long thumbnailId, Long mainVideoId,
+                                  String description, String instructions,
+                                  List<MuscleEntry> muscles, MuscleSummary muscleSummary,
+                                  Set<Long> equipmentIds, Set<Long> activityIds, Set<Long> trainingGoalIds,
+                                  Long publicationId) {
 
         if (ownerId == null) throw new IllegalArgumentException("ownerId required");
         validateTitle(title);
@@ -54,6 +65,7 @@ public class Exercise extends AggregateRoot {
         e.activityIds = new LinkedHashSet<>(activityIds != null ? activityIds : Set.of());
         e.trainingGoalIds = new LinkedHashSet<>(trainingGoalIds != null ? trainingGoalIds : Set.of());
         e.createdAt = Instant.now();
+        e.publicationId = publicationId;
         return e;
     }
 
@@ -62,7 +74,7 @@ public class Exercise extends AggregateRoot {
                                         String description, String instructions,
                                         List<MuscleEntry> muscles, MuscleSummary muscleSummary,
                                         Set<Long> equipmentIds, Set<Long> activityIds, Set<Long> trainingGoalIds,
-                                        Instant createdAt) {
+                                        Instant createdAt, Long publicationId) {
 
         Exercise e = new Exercise();
         e.id = id;
@@ -79,6 +91,7 @@ public class Exercise extends AggregateRoot {
         e.activityIds = new LinkedHashSet<>(activityIds != null ? activityIds : Set.of());
         e.trainingGoalIds = new LinkedHashSet<>(trainingGoalIds != null ? trainingGoalIds : Set.of());
         e.createdAt = createdAt;
+        e.publicationId = publicationId;
         return e;
     }
 
@@ -118,6 +131,10 @@ public class Exercise extends AggregateRoot {
 
     public boolean isOwnedBy(Long userId) {
         return ownerId != null && ownerId.equals(userId);
+    }
+
+    public void assignPublication(Long publicationId) {
+        this.publicationId = publicationId;
     }
 
     public List<MuscleEntry> getMuscles() {

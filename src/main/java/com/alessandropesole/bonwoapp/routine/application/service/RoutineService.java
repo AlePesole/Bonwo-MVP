@@ -11,9 +11,12 @@ import com.alessandropesole.bonwoapp.catalog.domain.port.out.ActivityRepository;
 import com.alessandropesole.bonwoapp.catalog.domain.port.out.EquipmentRepository;
 import com.alessandropesole.bonwoapp.catalog.domain.port.out.TrainingGoalRepository;
 import com.alessandropesole.bonwoapp.exercise.application.dto.ExerciseResponse;
+import com.alessandropesole.bonwoapp.exercise.domain.model.Exercise;
 import com.alessandropesole.bonwoapp.exercise.domain.model.MuscleSummary;
+import com.alessandropesole.bonwoapp.exercise.domain.port.in.publication.ExercisePublicationUseCase;
 import com.alessandropesole.bonwoapp.exercise.domain.port.in.ExerciseUseCase;
 import com.alessandropesole.bonwoapp.exercise.domain.port.out.ExerciseRepository;
+import com.alessandropesole.bonwoapp.exercise.application.service.publication.ExerciseVisibilityResolver;
 import com.alessandropesole.bonwoapp.exercise.application.service.MuscleSummaryCalculator;
 import com.alessandropesole.bonwoapp.media.application.service.MediaResolver;
 import com.alessandropesole.bonwoapp.media.application.service.MediaService;
@@ -38,6 +41,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -54,6 +59,8 @@ public class RoutineService implements RoutineUseCase {
     private final MuscleSummaryCalculator muscleSummaryCalculator;
     private final ExerciseUseCase exerciseUseCase;
     private final ExerciseRepository exerciseRepository;
+    private final ExercisePublicationUseCase exercisePublicationUseCase;
+    private final ExerciseVisibilityResolver exerciseVisibilityResolver;
 
     @Override
     public RoutineResponse create(CreateRoutineRequest req, Long ownerId) {
@@ -65,6 +72,7 @@ public class RoutineService implements RoutineUseCase {
         catalogValidator.validate(req.equipmentIds(), req.activityIds(), req.trainingGoalIds());
 
         List<ExerciseSlot> slots = ExerciseSlotDtoMapper.toDomainList(req.slots());
+        validateSlotExercisesAreAccessible(slots, ownerId);
         MuscleSummary muscleSummary = resolveAndAggregateMuscleSummary(slots, ownerId);
 
         Long thumbnailId = resolveNewThumbnailId(req.thumbnailUploadToken(), req.thumbnailId(), ownerId);
@@ -78,6 +86,7 @@ public class RoutineService implements RoutineUseCase {
         routine.applyMuscleSummary(muscleSummary);
 
         Routine saved = routineRepository.save(routine);
+        exercisePublicationUseCase.registerUses(ownerId, saved.getId(), extractExerciseIds(saved.getSlots()));
         return toResponse(saved, ownerId);
     }
 
@@ -105,6 +114,7 @@ public class RoutineService implements RoutineUseCase {
 
         List<ExerciseSlot> newSlots = req.slots() != null
                 ? ExerciseSlotDtoMapper.toDomainList(req.slots()) : null;
+        if (newSlots != null) validateSlotExercisesAreAccessible(newSlots, ownerId);
         MuscleSummary newMuscleSummary = newSlots != null
                 ? resolveAndAggregateMuscleSummary(newSlots, ownerId) : null;
 
@@ -120,6 +130,7 @@ public class RoutineService implements RoutineUseCase {
         if (newMuscleSummary != null) routine.applyMuscleSummary(newMuscleSummary);
 
         Routine saved = routineRepository.save(routine);
+        exercisePublicationUseCase.registerUses(ownerId, saved.getId(), extractExerciseIds(saved.getSlots()));
 
         return toResponse(saved, ownerId);
     }
@@ -153,12 +164,27 @@ public class RoutineService implements RoutineUseCase {
         return null;
     }
 
+    private Set<Long> extractExerciseIds(List<ExerciseSlot> slots) {
+        return slots.stream().map(ExerciseSlot::getExerciseId).collect(Collectors.toSet());
+    }
+
+    /**
+     * A routine can only reference exercises the caller owns, or exercises published and visible
+     * to anyone — never another user's private exercise.
+     */
+    private void validateSlotExercisesAreAccessible(List<ExerciseSlot> slots, Long ownerId) {
+        for (ExerciseSlot slot : slots) {
+            Exercise exercise = exerciseRepository.findById(slot.getExerciseId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Exercise", slot.getExerciseId()));
+            if (!exerciseVisibilityResolver.isVisible(exercise, ownerId))
+                throw new ForbiddenOperationException(
+                        "Exercise " + slot.getExerciseId() + " is not accessible to you");
+        }
+    }
+
     private MuscleSummary resolveAndAggregateMuscleSummary(List<ExerciseSlot> slots, Long ownerId) {
         List<MuscleSummary> summaries = slots.stream()
-                .map(slot -> exerciseRepository.findById(slot.getExerciseId())
-                        .filter(e -> e.isOwnedBy(ownerId))
-                        .map(e -> MuscleSummary.of(exerciseUseCase.getById(slot.getExerciseId(), ownerId).muscleSummary())))
-                .flatMap(Optional::stream)
+                .map(slot -> MuscleSummary.of(exerciseUseCase.getById(slot.getExerciseId(), ownerId).muscleSummary()))
                 .toList();
         return muscleSummaryCalculator.aggregate(summaries);
     }
@@ -200,7 +226,7 @@ public class RoutineService implements RoutineUseCase {
 
     private ExerciseResponse resolveExercise(Long exerciseId, Long ownerId) {
         return exerciseRepository.findById(exerciseId)
-                .filter(e -> e.isOwnedBy(ownerId))
+                .filter(e -> exerciseVisibilityResolver.isVisible(e, ownerId))
                 .map(e -> exerciseUseCase.getById(exerciseId, ownerId))
                 .orElse(null);
     }

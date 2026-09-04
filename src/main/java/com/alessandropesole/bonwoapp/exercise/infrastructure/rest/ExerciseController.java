@@ -33,7 +33,7 @@ public class ExerciseController {
     @Operation(
             summary = "List my exercises",
             description = "Returns a paginated list of the caller's own exercises, optionally filtered " +
-                    "by muscle group/sub-group, equipment, activity and training goal."
+                    "by muscle group/sub-group, equipment, activity, training goal and title (case-insensitive, partial match)."
     )
     @GetMapping
     public ResponseEntity<Page<ExerciseResponse>> listMine(
@@ -43,9 +43,10 @@ public class ExerciseController {
             @RequestParam(required = false) Set<Long> equipmentIds,
             @RequestParam(required = false) Set<Long> activityIds,
             @RequestParam(required = false) Set<Long> trainingGoalIds,
+            @RequestParam(required = false) String title,
             @PageableDefault(size = 20, sort = "createdAt") Pageable pageable) {
         Long userId = currentUserResolver.resolveId(principal);
-        var filter = new ExerciseFilter(muscleGroupId, muscleSubGroupId, equipmentIds, activityIds, trainingGoalIds);
+        var filter = new ExerciseFilter(muscleGroupId, muscleSubGroupId, equipmentIds, activityIds, trainingGoalIds, title);
         return ResponseEntity.ok(exerciseUseCase.listMine(userId, filter, pageable));
     }
 

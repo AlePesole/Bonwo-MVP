@@ -1,13 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
+import { useSearchParams } from "react-router-dom";
 import { catalogApi } from "./api";
 import { MuscleMap } from "./MuscleMap";
+import { AdminCatalogContent } from "@/admin/AdminCatalogPage";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { PageSpinner } from "@/components/Spinner";
 import { ApiError } from "@/components/ApiError";
 import { getErrorMessage } from "@/lib/axios";
-import type { ActivityResponse, EquipmentResponse, TrainingGoalResponse } from "@/types/api";
-import { Dumbbell, Flame, Layers, Target } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Dumbbell, Eye, Flame, Layers, Pencil, Target } from "lucide-react";
 
 function CatalogItemCard({
   icon,
@@ -50,8 +52,8 @@ function ActivityTab() {
     return <p className="text-muted-foreground text-sm text-center py-8">No activities found.</p>;
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-      {data.map((a: ActivityResponse) => (
+    <div className="grid gap-3 sm:grid-cols-2">
+      {data.map((a) => (
         <CatalogItemCard key={a.id} icon={a.icon} name={a.name} detail={a.detail} />
       ))}
     </div>
@@ -71,8 +73,8 @@ function EquipmentTab() {
     return <p className="text-muted-foreground text-sm text-center py-8">No equipment found.</p>;
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-      {data.map((e: EquipmentResponse) => (
+    <div className="grid gap-3 sm:grid-cols-2">
+      {data.map((e) => (
         <CatalogItemCard key={e.id} icon={e.icon} name={e.name} />
       ))}
     </div>
@@ -89,62 +91,111 @@ function TrainingGoalsTab() {
   if (isLoading) return <PageSpinner />;
   if (error) return <ApiError message={getErrorMessage(error)} />;
   if (!data?.length)
-    return (
-      <p className="text-muted-foreground text-sm text-center py-8">No training goals found.</p>
-    );
+    return <p className="text-muted-foreground text-sm text-center py-8">No training goals found.</p>;
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-      {data.map((g: TrainingGoalResponse) => (
+    <div className="grid gap-3 sm:grid-cols-2">
+      {data.map((g) => (
         <CatalogItemCard key={g.id} icon={g.icon} name={g.name} detail={g.detail} />
       ))}
     </div>
   );
 }
 
-export function CatalogPage() {
+function BrowseCatalogContent() {
   return (
-    <div className="max-w-4xl mx-auto">
-      <div className="mb-6 text-center">
-        <h1 className="text-3xl font-bold">Browse Catalog</h1>
-        <p className="text-muted-foreground mt-1">Browse activities, equipment, training goals and muscles</p>
+    <Tabs defaultValue="activities">
+      <div className="flex justify-center mb-6">
+        <TabsList>
+          <TabsTrigger value="activities" className="gap-1.5">
+            <Flame className="h-4 w-4" />
+            Activities
+          </TabsTrigger>
+          <TabsTrigger value="equipment" className="gap-1.5">
+            <Dumbbell className="h-4 w-4" />
+            Equipment
+          </TabsTrigger>
+          <TabsTrigger value="goals" className="gap-1.5">
+            <Target className="h-4 w-4" />
+            Training Goals
+          </TabsTrigger>
+          <TabsTrigger value="muscles" className="gap-1.5">
+            <Layers className="h-4 w-4" />
+            Muscles
+          </TabsTrigger>
+        </TabsList>
       </div>
 
-      <Tabs defaultValue="activities">
-        <div className="flex justify-center mb-6">
-          <TabsList>
-            <TabsTrigger value="activities" className="gap-1.5">
-              <Flame className="h-4 w-4" />
-              Activities
-            </TabsTrigger>
-            <TabsTrigger value="equipment" className="gap-1.5">
-              <Dumbbell className="h-4 w-4" />
-              Equipment
-            </TabsTrigger>
-            <TabsTrigger value="goals" className="gap-1.5">
-              <Target className="h-4 w-4" />
-              Training Goals
-            </TabsTrigger>
-            <TabsTrigger value="muscles" className="gap-1.5">
-              <Layers className="h-4 w-4" />
-              Muscles
-            </TabsTrigger>
-          </TabsList>
+      <TabsContent value="activities">
+        <ActivityTab />
+      </TabsContent>
+      <TabsContent value="equipment">
+        <EquipmentTab />
+      </TabsContent>
+      <TabsContent value="goals">
+        <TrainingGoalsTab />
+      </TabsContent>
+      <TabsContent value="muscles">
+        <MuscleMap />
+      </TabsContent>
+    </Tabs>
+  );
+}
+
+type CatalogMode = "view" | "edit";
+
+export function CatalogPage() {
+  const [params, setParams] = useSearchParams();
+  const mode: CatalogMode = params.get("mode") === "edit" ? "edit" : "view";
+
+  const setMode = (next: CatalogMode) => {
+    if (next === "edit") setParams({ mode: "edit" }, { replace: true });
+    else setParams({}, { replace: true });
+  };
+
+  return (
+    <div className="max-w-4xl mx-auto">
+      <div className="mb-6 text-center space-y-4">
+        <div>
+          <h1 className="text-3xl font-bold">Catalog</h1>
+          <p className="text-muted-foreground mt-1">
+            {mode === "edit"
+              ? "Manage activities, equipment, training goals and muscles"
+              : "Browse activities, equipment, training goals and muscles"}
+          </p>
         </div>
 
-        <TabsContent value="activities">
-          <ActivityTab />
-        </TabsContent>
-        <TabsContent value="equipment">
-          <EquipmentTab />
-        </TabsContent>
-        <TabsContent value="goals">
-          <TrainingGoalsTab />
-        </TabsContent>
-        <TabsContent value="muscles">
-          <MuscleMap />
-        </TabsContent>
-      </Tabs>
+        <div className="inline-flex items-center rounded-lg border border-border bg-muted/40 p-1">
+          <button
+            type="button"
+            onClick={() => setMode("view")}
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+              mode === "view"
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <Eye className="h-3.5 w-3.5" />
+            View
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode("edit")}
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+              mode === "edit"
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <Pencil className="h-3.5 w-3.5" />
+            Edit
+          </button>
+        </div>
+      </div>
+
+      {mode === "edit" ? <AdminCatalogContent /> : <BrowseCatalogContent />}
     </div>
   );
 }

@@ -13,16 +13,18 @@ import { LibraryPage } from "@/library/LibraryPage";
 import { WorkoutsPage } from "@/library/WorkoutsPage";
 import { RoutinesPage } from "@/library/RoutinesPage";
 import ProgramsPage from "@/library/ProgramsPage";
+import { LibraryCollectionPage } from "@/library/LibraryCollectionPage";
+import { PublicationPage } from "@/publication/PublicationPage";
+import { PublicationExercisesPage } from "@/publication/PublicationExercisesPage";
+import { ExplorePage } from "@/explore/ExplorePage";
 
 export default function App() {
   return (
     <AuthProvider>
       <Routes>
-        {/* Public auth routes (no navbar) */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
 
-        {/* Main layout with navbar */}
         <Route element={<Layout />}>
           <Route index element={<Navigate to="/library" replace />} />
           <Route path="/users/:username" element={<PublicProfilePage />} />
@@ -73,6 +75,50 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <ProgramsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/library/saves"
+            element={
+              <ProtectedRoute>
+                <LibraryCollectionPage source="saves" />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/library/likes"
+            element={
+              <ProtectedRoute>
+                <LibraryCollectionPage source="likes" />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/explore"
+            element={
+              <ProtectedRoute>
+                <ExplorePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="/explore/:scope" element={<Navigate to="/explore" replace />} />
+          <Route path="/explore/:scope/exercises" element={<Navigate to="/explore" replace />} />
+
+          <Route
+            path="/publications"
+            element={
+              <ProtectedRoute>
+                <PublicationPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/publications/exercises"
+            element={
+              <ProtectedRoute>
+                <PublicationExercisesPage />
               </ProtectedRoute>
             }
           />

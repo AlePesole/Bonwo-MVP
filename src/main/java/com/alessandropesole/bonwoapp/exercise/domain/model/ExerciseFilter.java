@@ -7,5 +7,6 @@ public record ExerciseFilter(
         Long muscleSubGroupId,
         Set<Long> equipmentIds,
         Set<Long> activityIds,
-        Set<Long> trainingGoalIds
+        Set<Long> trainingGoalIds,
+        String title
 ) {}

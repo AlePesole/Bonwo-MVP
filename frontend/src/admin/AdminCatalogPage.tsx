@@ -1,4 +1,5 @@
 import React, { useRef, useState } from "react";
+import { Navigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -918,16 +919,12 @@ function MusclesTab() {
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 
-export function AdminCatalogPage() {
-  return (
-    <div className="max-w-3xl mx-auto">
-      <div className="mb-6 text-center">
-        <h1 className="text-3xl font-bold">Catalog</h1>
-        <p className="text-muted-foreground mt-1">Manage activities, equipment, training goals and muscles</p>
-      </div>
+// ── Main content (no page chrome — used by Catalog hub View/Edit) ─────────────
 
-      <Tabs defaultValue="activities">
-        <div className="flex justify-center mb-6">
+export function AdminCatalogContent() {
+  return (
+    <Tabs defaultValue="activities">
+      <div className="flex justify-center mb-6">
         <TabsList>
           <TabsTrigger value="activities" className="gap-1.5">
             <Flame className="h-4 w-4" />
@@ -946,13 +943,17 @@ export function AdminCatalogPage() {
             Muscles
           </TabsTrigger>
         </TabsList>
-        </div>
+      </div>
 
-        <TabsContent value="activities"><ActivitiesTab /></TabsContent>
-        <TabsContent value="equipment"><EquipmentTab /></TabsContent>
-        <TabsContent value="goals"><TrainingGoalsTab /></TabsContent>
-        <TabsContent value="muscles"><MusclesTab /></TabsContent>
-      </Tabs>
-    </div>
+      <TabsContent value="activities"><ActivitiesTab /></TabsContent>
+      <TabsContent value="equipment"><EquipmentTab /></TabsContent>
+      <TabsContent value="goals"><TrainingGoalsTab /></TabsContent>
+      <TabsContent value="muscles"><MusclesTab /></TabsContent>
+    </Tabs>
   );
+}
+
+/** @deprecated Prefer /catalog?mode=edit — kept for deep links. */
+export function AdminCatalogPage() {
+  return <Navigate to="/catalog?mode=edit" replace />;
 }
