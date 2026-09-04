@@ -10,7 +10,8 @@ export interface ActivityRequest {
 }
 
 export const adminActivityApi = {
-  list: () => api.get<ActivityResponse[]>("/catalog/activities").then((r) => r.data),
+  list: (signal?: AbortSignal) =>
+    api.get<ActivityResponse[]>("/catalog/activities", { signal }).then((r) => r.data),
   create: (body: ActivityRequest) =>
     api.post<ActivityResponse>("/catalog/activities", body).then((r) => r.data),
   update: (id: number, body: ActivityRequest) =>
@@ -26,7 +27,8 @@ export interface EquipmentRequest {
 }
 
 export const adminEquipmentApi = {
-  list: () => api.get<EquipmentResponse[]>("/catalog/equipment").then((r) => r.data),
+  list: (signal?: AbortSignal) =>
+    api.get<EquipmentResponse[]>("/catalog/equipment", { signal }).then((r) => r.data),
   create: (body: EquipmentRequest) =>
     api.post<EquipmentResponse>("/catalog/equipment", body).then((r) => r.data),
   update: (id: number, body: EquipmentRequest) =>
@@ -43,7 +45,8 @@ export interface TrainingGoalRequest {
 }
 
 export const adminTrainingGoalApi = {
-  list: () => api.get<TrainingGoalResponse[]>("/catalog/training-goals").then((r) => r.data),
+  list: (signal?: AbortSignal) =>
+    api.get<TrainingGoalResponse[]>("/catalog/training-goals", { signal }).then((r) => r.data),
   create: (body: TrainingGoalRequest) =>
     api.post<TrainingGoalResponse>("/catalog/training-goals", body).then((r) => r.data),
   update: (id: number, body: TrainingGoalRequest) =>
@@ -59,7 +62,8 @@ export interface MuscleGroupRequest {
 }
 
 export const adminMuscleGroupApi = {
-  list: () => api.get<MuscleGroupResponse[]>("/catalog/muscles").then((r) => r.data),
+  list: (signal?: AbortSignal) =>
+    api.get<MuscleGroupResponse[]>("/catalog/muscles", { signal }).then((r) => r.data),
   create: (body: MuscleGroupRequest) =>
     api.post<MuscleGroupResponse>("/catalog/muscles", body).then((r) => r.data),
   update: (id: number, body: MuscleGroupRequest) =>

@@ -1,10 +1,13 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { publicationApi, type PublicationFilter } from "@/publication/api";
 import { PublicationSortSelect } from "@/publication/PublicationSortSelect";
 import { catalogApi } from "@/catalog/api";
 import { ExerciseDetailDialog } from "@/exercise/ExerciseDetailDialog";
-import { MuscleGroupFilterRow } from "@/library/MuscleGroupFilterRow";
+import {
+  MuscleGroupFilterRow,
+  resolvePrimaryMuscleGroups,
+} from "@/library/MuscleGroupFilterRow";
 import { cn, formatTimeAgo } from "@/lib/utils";
 import { getErrorMessage } from "@/lib/axios";
 import type {
@@ -99,20 +102,10 @@ function ExplorePublicationCard({
     (user?.id === publication.authorId ? user.username : "") ||
     "Unknown";
   const initial = username[0]?.toUpperCase() ?? "?";
-  const primaryGroups = useMemo(() => {
-    const seen = new Set<number>();
-    const groups: MuscleGroupResponse[] = [];
-    for (const m of ex.muscles) {
-      if (m.role === "PRIMARY") {
-        const g = muscleGroupMap.get(m.subGroup.groupId);
-        if (g && !seen.has(g.id)) {
-          seen.add(g.id);
-          groups.push(g);
-        }
-      }
-    }
-    return groups.slice(0, 3);
-  }, [ex.muscles, muscleGroupMap]);
+  const primaryGroups = useMemo(
+    () => resolvePrimaryMuscleGroups(ex.muscles, muscleGroupMap, 3),
+    [ex.muscles, muscleGroupMap]
+  );
 
   return (
     <div className="group rounded-xl border border-primary/40 bg-card overflow-hidden hover:border-primary transition-colors">
@@ -209,9 +202,9 @@ function ExploreExercisesFeed({ scope }: { scope: ExploreScope }) {
     setFilter((prev) => {
       const next = debouncedTitle || undefined;
       if (prev.title === next) return prev;
+      setPage(0);
       return { ...prev, title: next };
     });
-    setPage(0);
   }, [debouncedTitle]);
 
   useEffect(() => {
@@ -222,10 +215,13 @@ function ExploreExercisesFeed({ scope }: { scope: ExploreScope }) {
     setDetail(null);
   }, [scope]);
 
-  const { data: muscleGroups = [] } = useQuery({
+  const {
+    data: muscleGroups = [],
+    isPending: musclesPending,
+    isError: musclesError,
+  } = useQuery({
     queryKey: ["catalog", "muscles"],
-    queryFn: catalogApi.listMuscleGroups,
-    staleTime: 60_000,
+    queryFn: ({ signal }) => catalogApi.listMuscleGroups(signal),
   });
   const muscleGroupMap = useMemo(() => new Map(muscleGroups.map((g) => [g.id, g])), [muscleGroups]);
 
@@ -245,23 +241,24 @@ function ExploreExercisesFeed({ scope }: { scope: ExploreScope }) {
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["publications", "feed", scope, feedFilter, page],
-    queryFn: () => publicationApi.listFeed(feedFilter, page),
+    queryFn: ({ signal }) => publicationApi.listFeed(feedFilter, page, 12, signal),
+    placeholderData: keepPreviousData,
   });
 
   const { data: equipment = [] } = useQuery({
     queryKey: ["catalog", "equipment"],
-    queryFn: catalogApi.listEquipment,
-    staleTime: 60_000,
+    queryFn: ({ signal }) => catalogApi.listEquipment(signal),
+    enabled: filterOpen,
   });
   const { data: activities = [] } = useQuery({
     queryKey: ["catalog", "activities"],
-    queryFn: catalogApi.listActivities,
-    staleTime: 60_000,
+    queryFn: ({ signal }) => catalogApi.listActivities(signal),
+    enabled: filterOpen,
   });
   const { data: trainingGoals = [] } = useQuery({
     queryKey: ["catalog", "training-goals"],
-    queryFn: catalogApi.listTrainingGoals,
-    staleTime: 60_000,
+    queryFn: ({ signal }) => catalogApi.listTrainingGoals(signal),
+    enabled: filterOpen,
   });
 
   const toggleCatalog = (
@@ -293,6 +290,7 @@ function ExploreExercisesFeed({ scope }: { scope: ExploreScope }) {
             value={titleDraft}
             onChange={(e) => setTitleDraft(e.target.value)}
             placeholder="Search by title…"
+            aria-label="Search by title"
             className="h-8 pl-8 text-sm"
           />
         </div>
@@ -351,6 +349,8 @@ function ExploreExercisesFeed({ scope }: { scope: ExploreScope }) {
           }));
           setPage(0);
         }}
+        isPending={musclesPending}
+        isError={musclesError}
       />
 
       {filterOpen && (

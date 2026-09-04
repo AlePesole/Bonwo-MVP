@@ -251,8 +251,14 @@ function RoutineMuscleMap({ muscleSummary, slots, muscleGroups }: {
   const subGroupMap = useMemo(() => {
     const map = new Map<number, MuscleSubGroupResponse>();
     for (const g of muscleGroups) for (const s of g.subGroups) map.set(s.id, s);
+    for (const slot of slots) {
+      if (!slot.exercise) continue;
+      for (const m of slot.exercise.muscles) {
+        if (m.subGroup && !map.has(m.subGroupId)) map.set(m.subGroupId, m.subGroup);
+      }
+    }
     return map;
-  }, [muscleGroups]);
+  }, [muscleGroups, slots]);
 
   // Aggregate all muscles from all slots
   const allMuscles = useMemo(() => {
@@ -446,7 +452,7 @@ function AddToProgramPicker({
 
   const { data, isLoading } = useQuery({
     queryKey: ["programs-add-routine-picker", page],
-    queryFn: () => programApi.list({}, page, 12),
+    queryFn: ({ signal }) => programApi.list({}, page, 12, signal),
     staleTime: 30_000,
   });
 
@@ -484,6 +490,7 @@ function AddToProgramPicker({
           onChange={(e) => { setSearch(e.target.value); setPage(0); }}
           placeholder="Search your programs…"
           className="h-8 text-sm flex-1"
+          aria-label="Search your programs"
           autoFocus
         />
       </div>
@@ -560,7 +567,7 @@ export function RoutineDetailDialog({
   const [copiedOk, setCopiedOk] = useState(false);
   const { data: muscleGroups = [] } = useQuery({
     queryKey: ["catalog", "muscles"],
-    queryFn: catalogApi.listMuscleGroups,
+    queryFn: ({ signal }) => catalogApi.listMuscleGroups(signal),
     staleTime: 60_000,
     enabled: !!routine,
   });

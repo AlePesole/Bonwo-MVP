@@ -42,7 +42,7 @@ function CatalogItemCard({
 function ActivityTab() {
   const { data, isLoading, error } = useQuery({
     queryKey: ["catalog", "activities"],
-    queryFn: catalogApi.listActivities,
+    queryFn: ({ signal }) => catalogApi.listActivities(signal),
     staleTime: Infinity,
   });
 
@@ -63,7 +63,7 @@ function ActivityTab() {
 function EquipmentTab() {
   const { data, isLoading, error } = useQuery({
     queryKey: ["catalog", "equipment"],
-    queryFn: catalogApi.listEquipment,
+    queryFn: ({ signal }) => catalogApi.listEquipment(signal),
     staleTime: Infinity,
   });
 
@@ -84,7 +84,7 @@ function EquipmentTab() {
 function TrainingGoalsTab() {
   const { data, isLoading, error } = useQuery({
     queryKey: ["catalog", "training-goals"],
-    queryFn: catalogApi.listTrainingGoals,
+    queryFn: ({ signal }) => catalogApi.listTrainingGoals(signal),
     staleTime: Infinity,
   });
 

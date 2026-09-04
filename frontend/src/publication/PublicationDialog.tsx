@@ -201,6 +201,7 @@ function ActivationSlider({
         step={0.1}
         value={activation}
         onChange={(e) => onChange(Number(e.target.value))}
+        aria-label={`Muscle activation — ${ROLE_LABEL[role]}`}
         className="w-full h-2 rounded-full appearance-none cursor-pointer"
         style={{
           background: `linear-gradient(to right, ${color} 0%, ${color} ${pct}%, #3f3f46 ${pct}%, #3f3f46 100%)`,
@@ -614,23 +615,23 @@ export function PublicationDialog({
 
   const { data: muscleGroups = [] } = useQuery({
     queryKey: ["catalog", "muscles"],
-    queryFn: catalogApi.listMuscleGroups,
-    staleTime: 60_000,
+    queryFn: ({ signal }) => catalogApi.listMuscleGroups(signal),
+    enabled: open,
   });
   const { data: equipment = [] } = useQuery({
     queryKey: ["catalog", "equipment"],
-    queryFn: catalogApi.listEquipment,
-    staleTime: 60_000,
+    queryFn: ({ signal }) => catalogApi.listEquipment(signal),
+    enabled: open,
   });
   const { data: activities = [] } = useQuery({
     queryKey: ["catalog", "activities"],
-    queryFn: catalogApi.listActivities,
-    staleTime: 60_000,
+    queryFn: ({ signal }) => catalogApi.listActivities(signal),
+    enabled: open,
   });
   const { data: trainingGoals = [] } = useQuery({
     queryKey: ["catalog", "training-goals"],
-    queryFn: catalogApi.listTrainingGoals,
-    staleTime: 60_000,
+    queryFn: ({ signal }) => catalogApi.listTrainingGoals(signal),
+    enabled: open,
   });
 
   const {
@@ -769,13 +770,13 @@ export function PublicationDialog({
             <TabsContent value="info" className="space-y-4 mt-4">
               <div className={cn("grid gap-3", editing ? "grid-cols-3" : "grid-cols-4")}>
                 <div className={cn("space-y-1.5", editing ? "col-span-2" : "col-span-2")}>
-                  <Label>Title</Label>
-                  <Input {...register("title")} placeholder="e.g. Barbell Bench Press" />
+                  <Label htmlFor="pub-title">Title</Label>
+                  <Input id="pub-title" {...register("title")} placeholder="e.g. Barbell Bench Press" />
                   {errors.title && <p className="text-xs text-destructive">{errors.title.message}</p>}
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Level</Label>
-                  <Select {...register("level")} className={selectClass}>
+                  <Label htmlFor="pub-level">Level</Label>
+                  <Select id="pub-level" {...register("level")} className={selectClass}>
                     {LEVELS.map((l) => (
                       <option key={l.value} value={l.value}>{l.label}</option>
                     ))}
@@ -783,8 +784,8 @@ export function PublicationDialog({
                 </div>
                 {!editing && (
                   <div className="space-y-1.5">
-                    <Label>Type</Label>
-                    <Select {...register("type")} className={selectClass}>
+                    <Label htmlFor="pub-type">Type</Label>
+                    <Select id="pub-type" {...register("type")} className={selectClass}>
                       {typeOptions.map((t) => (
                         <option key={t.value} value={t.value}>{t.label}</option>
                       ))}
@@ -796,19 +797,19 @@ export function PublicationDialog({
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label>Description <span className="text-muted-foreground">(optional)</span></Label>
-                  <Textarea {...register("description")} rows={4} placeholder="Brief overview…" />
+                  <Label htmlFor="pub-description">Description <span className="text-muted-foreground">(optional)</span></Label>
+                  <Textarea id="pub-description" {...register("description")} rows={4} placeholder="Brief overview…" />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Instructions <span className="text-muted-foreground">(optional)</span></Label>
-                  <Textarea {...register("instructions")} rows={4} placeholder="Step by step…" />
+                  <Label htmlFor="pub-instructions">Instructions <span className="text-muted-foreground">(optional)</span></Label>
+                  <Textarea id="pub-instructions" {...register("instructions")} rows={4} placeholder="Step by step…" />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 {/* Thumbnail */}
                 <div className="space-y-1.5">
-                  <Label>
+                  <Label htmlFor="pub-thumbnail">
                     Thumbnail{" "}
                     {!editing && <span className="text-muted-foreground">(required)</span>}
                   </Label>
@@ -831,14 +832,14 @@ export function PublicationDialog({
                         {thumb.token && <span className="text-primary ml-1">(ready)</span>}
                       </p>
                     </div>
-                    <input ref={thumb.fileRef} type="file" accept="image/*" className="hidden" onChange={thumb.handleFile} />
+                    <input id="pub-thumbnail" ref={thumb.fileRef} type="file" accept="image/*" className="hidden" onChange={thumb.handleFile} />
                   </div>
                   {thumb.error && <p className="text-xs text-destructive">{thumb.error}</p>}
                 </div>
 
                 {/* Video */}
                 <div className="space-y-1.5">
-                  <Label>
+                  <Label htmlFor="pub-video">
                     Video{" "}
                     {editing ? (
                       <span className="text-muted-foreground">(immutable)</span>
@@ -905,7 +906,7 @@ export function PublicationDialog({
                           </button>
                         )}
                       </div>
-                      <input ref={video.fileRef} type="file" accept="video/*" className="hidden" onChange={video.handleFile} />
+                      <input id="pub-video" ref={video.fileRef} type="file" accept="video/*" className="hidden" onChange={video.handleFile} />
                     </div>
                   )}
                   {video.error && <p className="text-xs text-destructive">{video.error}</p>}

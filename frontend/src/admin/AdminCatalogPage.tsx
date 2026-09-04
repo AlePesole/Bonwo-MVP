@@ -69,9 +69,11 @@ function useIconUpload() {
     }
   };
 
-  const Field = ({ label = "Icon" }: { label?: string }) => (
+  const Field = ({ label = "Icon" }: { label?: string }) => {
+    const inputId = `icon-upload-${label.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "")}`;
+    return (
     <div className="space-y-1.5">
-      <Label>{label}</Label>
+      <Label htmlFor={inputId}>{label}</Label>
       <div className="flex items-center gap-3">
         <div
           className="h-12 w-12 rounded-lg border border-border bg-muted flex items-center justify-center cursor-pointer hover:bg-accent transition-colors shrink-0"
@@ -89,11 +91,12 @@ function useIconUpload() {
           Click to {preview ? "change" : "upload"} icon
           {token && <span className="text-primary ml-1">(ready)</span>}
         </div>
-        <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
+        <input id={inputId} ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
       </div>
       {error && <p className="text-xs text-destructive">{error}</p>}
     </div>
   );
+  };
 
   return { token, preview, uploading, reset, Field };
 }
@@ -162,7 +165,7 @@ function ActivitiesTab() {
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["catalog", "activities"],
-    queryFn: adminActivityApi.list,
+    queryFn: ({ signal }) => adminActivityApi.list(signal),
   });
 
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<ActivityForm>({
@@ -278,7 +281,7 @@ function EquipmentTab() {
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["catalog", "equipment"],
-    queryFn: adminEquipmentApi.list,
+    queryFn: ({ signal }) => adminEquipmentApi.list(signal),
   });
 
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<EquipmentForm>({
@@ -391,7 +394,7 @@ function TrainingGoalsTab() {
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["catalog", "training-goals"],
-    queryFn: adminTrainingGoalApi.list,
+    queryFn: ({ signal }) => adminTrainingGoalApi.list(signal),
   });
 
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<GoalForm>({
@@ -622,20 +625,20 @@ function SubGroupDialog({
           {serverError && <ApiError message={serverError} />}
 
           <div className="space-y-1.5">
-            <Label>Name</Label>
-            <Input {...register("name")} placeholder="e.g. Pectoralis Major" />
+            <Label htmlFor="sg-name">Name</Label>
+            <Input id="sg-name" {...register("name")} placeholder="e.g. Pectoralis Major" />
             {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
           </div>
 
           <div className="space-y-1.5">
-            <Label>Description <span className="text-muted-foreground">(optional)</span></Label>
-            <Textarea {...register("detail")} rows={2} placeholder="Short description…" />
+            <Label htmlFor="sg-detail">Description <span className="text-muted-foreground">(optional)</span></Label>
+            <Textarea id="sg-detail" {...register("detail")} rows={2} placeholder="Short description…" />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <Label>SVG Path — Front</Label>
+                <Label htmlFor="sg-svg-front">SVG Path — Front</Label>
                 {editing && (
                   <button
                     type="button"
@@ -647,6 +650,7 @@ function SubGroupDialog({
                 )}
               </div>
               <Textarea
+                id="sg-svg-front"
                 {...register("svgPathFront")}
                 rows={3}
                 placeholder="M 0 0 L … (front view)"
@@ -655,7 +659,7 @@ function SubGroupDialog({
             </div>
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <Label>SVG Path — Back</Label>
+                <Label htmlFor="sg-svg-back">SVG Path — Back</Label>
                 {editing && (
                   <button
                     type="button"
@@ -667,6 +671,7 @@ function SubGroupDialog({
                 )}
               </div>
               <Textarea
+                id="sg-svg-back"
                 {...register("svgPathBack")}
                 rows={3}
                 placeholder="M 0 0 L … (back view)"
@@ -743,8 +748,8 @@ function GroupDialog({
         <form onSubmit={handleSubmit((d) => mutation.mutate(d))} className="space-y-4">
           {serverError && <ApiError message={serverError} />}
           <div className="space-y-1.5">
-            <Label>Name</Label>
-            <Input {...register("name")} placeholder="e.g. Chest" />
+            <Label htmlFor="mg-name">Name</Label>
+            <Input id="mg-name" {...register("name")} placeholder="e.g. Chest" />
             {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
           </div>
           <icon.Field />
@@ -765,7 +770,7 @@ function MusclesTab() {
   const qc = useQueryClient();
   const { data, isLoading, error } = useQuery({
     queryKey: ["admin", "muscles"],
-    queryFn: adminMuscleGroupApi.list,
+    queryFn: ({ signal }) => adminMuscleGroupApi.list(signal),
   });
 
   const [expanded, setExpanded] = useState<Set<number>>(new Set());

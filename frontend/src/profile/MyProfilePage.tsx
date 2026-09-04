@@ -12,7 +12,7 @@ export function MyProfilePage() {
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["profile", "me"],
-    queryFn: profileApi.getMe,
+    queryFn: ({ signal }) => profileApi.getMe(signal),
   });
 
   if (isLoading) return <PageSpinner />;

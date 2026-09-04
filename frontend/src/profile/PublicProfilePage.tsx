@@ -11,7 +11,7 @@ export function PublicProfilePage() {
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["profile", username],
-    queryFn: () => profileApi.getPublic(username!),
+    queryFn: ({ signal }) => profileApi.getPublic(username!, signal),
     enabled: !!username,
   });
 

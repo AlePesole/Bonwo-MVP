@@ -236,8 +236,16 @@ function ProgramMusclesTab({ routines, muscleGroups }: {
   const subGroupMap = useMemo(() => {
     const map = new Map<number, MuscleSubGroupResponse>();
     for (const g of muscleGroups) for (const s of g.subGroups) map.set(s.id, s);
+    for (const routine of routines) {
+      for (const slot of routine.slots) {
+        if (!slot.exercise) continue;
+        for (const m of slot.exercise.muscles) {
+          if (m.subGroup && !map.has(m.subGroupId)) map.set(m.subGroupId, m.subGroup);
+        }
+      }
+    }
     return map;
-  }, [muscleGroups]);
+  }, [muscleGroups, routines]);
 
   const allMuscles = useAggregatedMuscles(routines);
 
@@ -353,7 +361,7 @@ export function ProgramDetailDialog({
 
   const { data: muscleGroups = [] } = useQuery({
     queryKey: ["catalog", "muscles"],
-    queryFn: catalogApi.listMuscleGroups,
+    queryFn: ({ signal }) => catalogApi.listMuscleGroups(signal),
     staleTime: 60_000,
     enabled: !!program,
   });

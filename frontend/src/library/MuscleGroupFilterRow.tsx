@@ -1,7 +1,40 @@
 import { useMemo, useRef, useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
-import type { MuscleGroupResponse, MuscleSubGroupResponse } from "@/types/api";
+import type {
+  ActivationLevel,
+  MuscleGroupResponse,
+  MuscleSubGroupResponse,
+} from "@/types/api";
 import { Dumbbell } from "lucide-react";
+
+/** Resolve primary muscle groups for card icons; falls back to embedded subGroup when catalog isn't ready. */
+export function resolvePrimaryMuscleGroups(
+  muscles: { role: ActivationLevel; subGroup?: MuscleSubGroupResponse | null }[],
+  muscleGroupMap: Map<number, MuscleGroupResponse>,
+  limit = Infinity
+): MuscleGroupResponse[] {
+  const seen = new Set<number>();
+  const groups: MuscleGroupResponse[] = [];
+  for (const m of muscles) {
+    if (m.role !== "PRIMARY") continue;
+    const groupId = m.subGroup?.groupId;
+    if (groupId == null || seen.has(groupId)) continue;
+    seen.add(groupId);
+    const fromCatalog = muscleGroupMap.get(groupId);
+    if (fromCatalog) {
+      groups.push(fromCatalog);
+    } else if (m.subGroup) {
+      groups.push({
+        id: groupId,
+        name: m.subGroup.name,
+        icon: m.subGroup.icon,
+        subGroups: [],
+      });
+    }
+    if (groups.length >= limit) break;
+  }
+  return groups;
+}
 
 // ── Shared drag-to-scroll row ─────────────────────────────────────────────────
 
@@ -135,12 +168,16 @@ export function MuscleGroupFilterRow({
   selectedSubGroupIds,
   onGroupChange,
   onSubGroupChange,
+  isPending = false,
+  isError = false,
 }: {
   muscleGroups: MuscleGroupResponse[];
   selectedGroupIds: number[];
   selectedSubGroupIds: number[];
   onGroupChange: (ids: number[]) => void;
   onSubGroupChange: (ids: number[]) => void;
+  isPending?: boolean;
+  isError?: boolean;
 }) {
   const subGroups = useMemo(() => {
     if (selectedGroupIds.length === 0) return [] as MuscleSubGroupResponse[];
@@ -150,7 +187,15 @@ export function MuscleGroupFilterRow({
       .flatMap((g) => g.subGroups);
   }, [muscleGroups, selectedGroupIds]);
 
-  if (muscleGroups.length === 0) return null;
+  if (muscleGroups.length === 0) {
+    if (isPending) {
+      return <p className="text-xs text-muted-foreground py-1">Loading muscles…</p>;
+    }
+    if (isError) {
+      return <p className="text-xs text-destructive py-1">Couldn't load muscle filters.</p>;
+    }
+    return null;
+  }
 
   const toggleGroup = (id: number) => {
     const next = selectedGroupIds.includes(id)

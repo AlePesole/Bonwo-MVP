@@ -1,10 +1,11 @@
 import { useState, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { programApi, type ProgramFilter } from "@/program/api";
 import { catalogApi } from "@/catalog/api";
 import { ProgramDialog } from "@/program/ProgramDialog";
 import { ProgramDetailDialog } from "@/program/ProgramDetailDialog";
+import { resolvePrimaryMuscleGroups } from "@/library/MuscleGroupFilterRow";
 import { cn } from "@/lib/utils";
 import { getErrorMessage } from "@/lib/axios";
 import type { Level, MuscleGroupResponse, TrainingProgramResponse } from "@/types/api";
@@ -47,23 +48,10 @@ function ProgramCard({
 }) {
   // Primary muscle groups from all routines' slots
   const primaryGroups = useMemo(() => {
-    const seen = new Set<number>();
-    const groups: MuscleGroupResponse[] = [];
-    for (const routine of program.routines) {
-      for (const slot of routine.slots) {
-        if (!slot.exercise) continue;
-        for (const m of slot.exercise.muscles) {
-          if (m.role === "PRIMARY") {
-            const g = muscleGroupMap.get(m.subGroup.groupId);
-            if (g && !seen.has(g.id)) {
-              seen.add(g.id);
-              groups.push(g);
-            }
-          }
-        }
-      }
-    }
-    return groups.slice(0, 3);
+    const muscles = program.routines.flatMap((routine) =>
+      routine.slots.flatMap((slot) => slot.exercise?.muscles ?? [])
+    );
+    return resolvePrimaryMuscleGroups(muscles, muscleGroupMap, 3);
   }, [program.routines, muscleGroupMap]);
 
   return (
@@ -86,7 +74,7 @@ function ProgramCard({
               g.icon?.url ? (
                 <img key={g.id} src={g.icon.url} alt={g.name} title={g.name} className="h-9 w-9 object-contain drop-shadow" />
               ) : (
-                <Dumbbell key={g.id} className="h-9 w-9 text-white drop-shadow" title={g.name} />
+                <Dumbbell key={g.id} className="h-9 w-9 text-white drop-shadow" aria-label={g.name} />
               )
             )}
           </div>
@@ -132,9 +120,9 @@ function ProgramCard({
 // ── Filter panel ──────────────────────────────────────────────────────────────
 
 function FilterPanel({ filter, onChange }: { filter: ProgramFilter; onChange: (f: ProgramFilter) => void }) {
-  const { data: equipment = [] } = useQuery({ queryKey: ["catalog", "equipment"], queryFn: catalogApi.listEquipment, staleTime: 60_000 });
-  const { data: activities = [] } = useQuery({ queryKey: ["catalog", "activities"], queryFn: catalogApi.listActivities, staleTime: 60_000 });
-  const { data: trainingGoals = [] } = useQuery({ queryKey: ["catalog", "training-goals"], queryFn: catalogApi.listTrainingGoals, staleTime: 60_000 });
+  const { data: equipment = [] } = useQuery({ queryKey: ["catalog", "equipment"], queryFn: ({ signal }) => catalogApi.listEquipment(signal) });
+  const { data: activities = [] } = useQuery({ queryKey: ["catalog", "activities"], queryFn: ({ signal }) => catalogApi.listActivities(signal) });
+  const { data: trainingGoals = [] } = useQuery({ queryKey: ["catalog", "training-goals"], queryFn: ({ signal }) => catalogApi.listTrainingGoals(signal) });
 
   const toggle = (field: "equipmentIds" | "activityIds" | "trainingGoalIds", id: number) => {
     const cur = filter[field] ?? [];
@@ -202,8 +190,7 @@ function ProgramsTab() {
 
   const { data: muscleGroups = [] } = useQuery({
     queryKey: ["catalog", "muscles"],
-    queryFn: catalogApi.listMuscleGroups,
-    staleTime: 60_000,
+    queryFn: ({ signal }) => catalogApi.listMuscleGroups(signal),
   });
 
   const muscleGroupMap = useMemo(() => new Map(muscleGroups.map((g) => [g.id, g])), [muscleGroups]);
@@ -217,7 +204,8 @@ function ProgramsTab() {
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["programs", filter, page],
-    queryFn: () => programApi.list(filter, page),
+    queryFn: ({ signal }) => programApi.list(filter, page, 12, signal),
+    placeholderData: keepPreviousData,
   });
 
   const deleteMutation = useMutation({

@@ -2,11 +2,11 @@ import { api } from "@/lib/axios";
 import type { LibraryFolderDetail, LibraryFolderSummary } from "@/types/api";
 
 export const libraryApi = {
-  listFolders: () =>
-    api.get<LibraryFolderSummary[]>("/library/folders").then((r) => r.data),
+  listFolders: (signal?: AbortSignal) =>
+    api.get<LibraryFolderSummary[]>("/library/folders", { signal }).then((r) => r.data),
 
-  getFolderDetail: (id: number) =>
-    api.get<LibraryFolderDetail>(`/library/folders/${id}`).then((r) => r.data),
+  getFolderDetail: (id: number, signal?: AbortSignal) =>
+    api.get<LibraryFolderDetail>(`/library/folders/${id}`, { signal }).then((r) => r.data),
 
   createFolder: (name: string) =>
     api.post<LibraryFolderSummary>("/library/folders", { name }).then((r) => r.data),

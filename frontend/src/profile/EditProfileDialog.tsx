@@ -37,6 +37,7 @@ type FormData = z.infer<typeof schema>;
 
 interface NumberStepperProps {
   label: string;
+  id?: string;
   value: string;
   onChange: (v: string) => void;
   min: number;
@@ -44,7 +45,7 @@ interface NumberStepperProps {
   step?: number;
 }
 
-function NumberStepper({ label, value, onChange, min, max, step = 1 }: NumberStepperProps) {
+function NumberStepper({ label, id, value, onChange, min, max, step = 1 }: NumberStepperProps) {
   const num = value === "" ? null : Number(value);
 
   const decrement = useCallback(() => {
@@ -61,7 +62,7 @@ function NumberStepper({ label, value, onChange, min, max, step = 1 }: NumberSte
 
   return (
     <div className="space-y-1.5">
-      <Label className="text-xs text-muted-foreground">{label}</Label>
+      <Label htmlFor={id} className="text-xs text-muted-foreground">{label}</Label>
       <div className="flex items-center gap-0 rounded-md border border-input bg-input overflow-hidden">
         <button
           type="button"
@@ -72,6 +73,7 @@ function NumberStepper({ label, value, onChange, min, max, step = 1 }: NumberSte
           <Minus className="h-4 w-4" />
         </button>
         <input
+          id={id}
           type="number"
           value={value}
           onChange={(e) => onChange(e.target.value)}
@@ -133,7 +135,7 @@ export function EditProfileDialog({ open, onClose, profile }: EditProfileDialogP
 
   const { data: activities } = useQuery({
     queryKey: ["catalog", "activities"],
-    queryFn: catalogApi.listActivities,
+    queryFn: ({ signal }) => catalogApi.listActivities(signal),
     staleTime: Infinity,
   });
 
@@ -273,6 +275,7 @@ export function EditProfileDialog({ open, onClose, profile }: EditProfileDialogP
           <div className="grid grid-cols-3 gap-3">
             <NumberStepper
               label="Age (years)"
+              id="profile-age"
               value={watch("ageYears") ?? ""}
               onChange={(v) => setValue("ageYears", v)}
               min={13}
@@ -280,6 +283,7 @@ export function EditProfileDialog({ open, onClose, profile }: EditProfileDialogP
             />
             <NumberStepper
               label="Height (cm)"
+              id="profile-height"
               value={watch("heightCm") ?? ""}
               onChange={(v) => setValue("heightCm", v)}
               min={50}
@@ -287,6 +291,7 @@ export function EditProfileDialog({ open, onClose, profile }: EditProfileDialogP
             />
             <NumberStepper
               label="Weight (kg)"
+              id="profile-weight"
               value={watch("weightKg") ?? ""}
               onChange={(v) => setValue("weightKg", v)}
               min={20}
@@ -298,7 +303,7 @@ export function EditProfileDialog({ open, onClose, profile }: EditProfileDialogP
           {/* Activities */}
           {activities && activities.length > 0 && (
             <div className="space-y-2">
-              <Label>Activities</Label>
+              <p className="text-sm font-medium leading-none">Activities</p>
               <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto rounded-md border p-3">
                 {activities.map((a) => {
                   const selected = selectedActivityIds.includes(a.id);

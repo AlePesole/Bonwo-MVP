@@ -103,7 +103,7 @@ export interface MuscleEntryDto {
 
 export interface MuscleEntryResponse {
   subGroupId: number;
-  subGroup: MuscleSubGroupResponse;
+  subGroup: MuscleSubGroupResponse | null;
   activation: number;
   role: ActivationLevel;
 }

@@ -187,6 +187,7 @@ function ActivationSlider({
         step={0.1}
         value={activation}
         onChange={(e) => onChange(Number(e.target.value))}
+        aria-label={`Muscle activation — ${ROLE_LABEL[role]}`}
         className="w-full h-2 rounded-full appearance-none cursor-pointer"
         style={{
           background: `linear-gradient(to right, ${color} 0%, ${color} ${pct}%, #3f3f46 ${pct}%, #3f3f46 100%)`,
@@ -613,23 +614,23 @@ export function ExerciseDialog({
 
   const { data: muscleGroups = [] } = useQuery({
     queryKey: ["catalog", "muscles"],
-    queryFn: catalogApi.listMuscleGroups,
-    staleTime: 60_000,
+    queryFn: ({ signal }) => catalogApi.listMuscleGroups(signal),
+    enabled: open,
   });
   const { data: equipment = [] } = useQuery({
     queryKey: ["catalog", "equipment"],
-    queryFn: catalogApi.listEquipment,
-    staleTime: 60_000,
+    queryFn: ({ signal }) => catalogApi.listEquipment(signal),
+    enabled: open,
   });
   const { data: activities = [] } = useQuery({
     queryKey: ["catalog", "activities"],
-    queryFn: catalogApi.listActivities,
-    staleTime: 60_000,
+    queryFn: ({ signal }) => catalogApi.listActivities(signal),
+    enabled: open,
   });
   const { data: trainingGoals = [] } = useQuery({
     queryKey: ["catalog", "training-goals"],
-    queryFn: catalogApi.listTrainingGoals,
-    staleTime: 60_000,
+    queryFn: ({ signal }) => catalogApi.listTrainingGoals(signal),
+    enabled: open,
   });
 
   const {
@@ -734,13 +735,13 @@ export function ExerciseDialog({
             <TabsContent value="info" className="space-y-4 mt-4">
               <div className="grid grid-cols-3 gap-3">
                 <div className="col-span-2 space-y-1.5">
-                  <Label>Title</Label>
-                  <Input {...register("title")} placeholder="e.g. Barbell Bench Press" />
+                  <Label htmlFor="ex-title">Title</Label>
+                  <Input id="ex-title" {...register("title")} placeholder="e.g. Barbell Bench Press" />
                   {errors.title && <p className="text-xs text-destructive">{errors.title.message}</p>}
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Level</Label>
-                  <Select {...register("level")} className={selectClass}>
+                  <Label htmlFor="ex-level">Level</Label>
+                  <Select id="ex-level" {...register("level")} className={selectClass}>
                     {LEVELS.map((l) => (
                       <option key={l.value} value={l.value}>{l.label}</option>
                     ))}
@@ -750,19 +751,19 @@ export function ExerciseDialog({
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label>Description <span className="text-muted-foreground">(optional)</span></Label>
-                  <Textarea {...register("description")} rows={4} placeholder="Brief overview…" />
+                  <Label htmlFor="ex-description">Description <span className="text-muted-foreground">(optional)</span></Label>
+                  <Textarea id="ex-description" {...register("description")} rows={4} placeholder="Brief overview…" />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Instructions <span className="text-muted-foreground">(optional)</span></Label>
-                  <Textarea {...register("instructions")} rows={4} placeholder="Step by step…" />
+                  <Label htmlFor="ex-instructions">Instructions <span className="text-muted-foreground">(optional)</span></Label>
+                  <Textarea id="ex-instructions" {...register("instructions")} rows={4} placeholder="Step by step…" />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 {/* Thumbnail */}
                 <div className="space-y-1.5">
-                  <Label>Thumbnail <span className="text-muted-foreground">(optional)</span></Label>
+                  <Label htmlFor="ex-thumbnail">Thumbnail <span className="text-muted-foreground">(optional)</span></Label>
                   <div className="flex items-center gap-3">
                     <div
                       className="h-16 w-16 rounded-lg border border-border bg-muted flex items-center justify-center cursor-pointer hover:bg-accent transition-colors shrink-0 overflow-hidden"
@@ -791,14 +792,14 @@ export function ExerciseDialog({
                         </button>
                       )}
                     </div>
-                    <input ref={thumb.fileRef} type="file" accept="image/*" className="hidden" onChange={thumb.handleFile} />
+                    <input id="ex-thumbnail" ref={thumb.fileRef} type="file" accept="image/*" className="hidden" onChange={thumb.handleFile} />
                   </div>
                   {thumb.error && <p className="text-xs text-destructive">{thumb.error}</p>}
                 </div>
 
                 {/* Video */}
                 <div className="space-y-1.5">
-                  <Label>Video <span className="text-muted-foreground">(optional)</span></Label>
+                  <Label htmlFor="ex-video">Video <span className="text-muted-foreground">(optional)</span></Label>
                   <div className="flex items-center gap-3">
                     <div
                       className="h-16 w-24 rounded-lg border border-border bg-muted flex items-center justify-center cursor-pointer hover:bg-accent transition-colors shrink-0 overflow-hidden relative"
@@ -837,7 +838,7 @@ export function ExerciseDialog({
                         </button>
                       )}
                     </div>
-                    <input ref={video.fileRef} type="file" accept="video/*" className="hidden" onChange={video.handleFile} />
+                    <input id="ex-video" ref={video.fileRef} type="file" accept="video/*" className="hidden" onChange={video.handleFile} />
                   </div>
                   {video.error && <p className="text-xs text-destructive">{video.error}</p>}
                 </div>

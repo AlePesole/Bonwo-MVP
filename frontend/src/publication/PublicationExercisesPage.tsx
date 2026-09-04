@@ -1,11 +1,14 @@
 import { Link } from "react-router-dom";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { publicationApi, type PublicationFilter } from "@/publication/api";
 import { catalogApi } from "@/catalog/api";
 import { PublicationDialog } from "@/publication/PublicationDialog";
 import { PublicationSortSelect } from "@/publication/PublicationSortSelect";
 import { ExerciseDetailDialog } from "@/exercise/ExerciseDetailDialog";
-import { MuscleGroupFilterRow } from "@/library/MuscleGroupFilterRow";
+import {
+  MuscleGroupFilterRow,
+  resolvePrimaryMuscleGroups,
+} from "@/library/MuscleGroupFilterRow";
 import { cn, formatTimeAgo } from "@/lib/utils";
 import { getErrorMessage } from "@/lib/axios";
 import type {
@@ -73,20 +76,10 @@ function PublicationCard({
     (user?.id === publication.authorId ? user.username : "") ||
     "Unknown";
   const initial = username[0]?.toUpperCase() ?? "?";
-  const primaryGroups = useMemo(() => {
-    const seen = new Set<number>();
-    const groups: MuscleGroupResponse[] = [];
-    for (const m of ex.muscles) {
-      if (m.role === "PRIMARY") {
-        const g = muscleGroupMap.get(m.subGroup.groupId);
-        if (g && !seen.has(g.id)) {
-          seen.add(g.id);
-          groups.push(g);
-        }
-      }
-    }
-    return groups.slice(0, 3);
-  }, [ex.muscles, muscleGroupMap]);
+  const primaryGroups = useMemo(
+    () => resolvePrimaryMuscleGroups(ex.muscles, muscleGroupMap, 3),
+    [ex.muscles, muscleGroupMap]
+  );
 
   return (
     <div className="group rounded-xl border border-primary/40 bg-card overflow-hidden hover:border-primary transition-colors">
@@ -172,7 +165,9 @@ function PublicationCard({
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 className="text-destructive focus:text-destructive"
-                onClick={onDelete}
+                onSelect={() => {
+                  window.setTimeout(() => onDelete(), 0);
+                }}
               >
                 <Trash2 className="h-4 w-4 mr-2" /> Delete
               </DropdownMenuItem>
@@ -204,15 +199,18 @@ function PublicationExercisesTab() {
     setFilter((prev) => {
       const next = debouncedTitle || undefined;
       if (prev.title === next) return prev;
+      setPage(0);
       return { ...prev, title: next };
     });
-    setPage(0);
   }, [debouncedTitle]);
 
-  const { data: muscleGroups = [] } = useQuery({
+  const {
+    data: muscleGroups = [],
+    isPending: musclesPending,
+    isError: musclesError,
+  } = useQuery({
     queryKey: ["catalog", "muscles"],
-    queryFn: catalogApi.listMuscleGroups,
-    staleTime: 60_000,
+    queryFn: ({ signal }) => catalogApi.listMuscleGroups(signal),
   });
   const muscleGroupMap = useMemo(() => new Map(muscleGroups.map((g) => [g.id, g])), [muscleGroups]);
 
@@ -231,29 +229,46 @@ function PublicationExercisesTab() {
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["publications", "mine", filter, page],
-    queryFn: () => publicationApi.listMine(filter, page),
+    queryFn: ({ signal }) => publicationApi.listMine(filter, page, 12, signal),
+    placeholderData: keepPreviousData,
   });
 
   const { data: equipment = [] } = useQuery({
     queryKey: ["catalog", "equipment"],
-    queryFn: catalogApi.listEquipment,
-    staleTime: 60_000,
+    queryFn: ({ signal }) => catalogApi.listEquipment(signal),
+    enabled: filterOpen,
   });
   const { data: activities = [] } = useQuery({
     queryKey: ["catalog", "activities"],
-    queryFn: catalogApi.listActivities,
-    staleTime: 60_000,
+    queryFn: ({ signal }) => catalogApi.listActivities(signal),
+    enabled: filterOpen,
   });
   const { data: trainingGoals = [] } = useQuery({
     queryKey: ["catalog", "training-goals"],
-    queryFn: catalogApi.listTrainingGoals,
-    staleTime: 60_000,
+    queryFn: ({ signal }) => catalogApi.listTrainingGoals(signal),
+    enabled: filterOpen,
   });
 
   const deleteMutation = useMutation({
     mutationFn: publicationApi.delete,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["publications"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["publications"] });
+      // Publication delete cascades to the owned exercise in the DB
+      qc.invalidateQueries({ queryKey: ["exercises"] });
+      setDetail(null);
+    },
   });
+
+  /** Native confirm is blocked inside Radix Dialog — close detail first, then confirm. */
+  const requestDelete = (pub: ExercisePublicationResponse) => {
+    const title = pub.exercise.title;
+    const id = pub.id;
+    if (detail?.id === id) setDetail(null);
+    window.setTimeout(() => {
+      if (!window.confirm(`Delete publication "${title}"?`)) return;
+      deleteMutation.mutate(id);
+    }, 50);
+  };
 
   const toggleCatalog = (
     field: "equipmentIds" | "activityIds" | "trainingGoalIds",
@@ -284,6 +299,7 @@ function PublicationExercisesTab() {
             value={titleDraft}
             onChange={(e) => setTitleDraft(e.target.value)}
             placeholder="Search by title…"
+            aria-label="Search by title"
             className="h-8 pl-8 text-sm"
           />
         </div>
@@ -350,6 +366,8 @@ function PublicationExercisesTab() {
           }));
           setPage(0);
         }}
+        isPending={musclesPending}
+        isError={musclesError}
       />
 
       {filterOpen && (
@@ -406,6 +424,9 @@ function PublicationExercisesTab() {
 
       {isLoading && <PageSpinner />}
       {error && <ApiError message={getErrorMessage(error)} />}
+      {deleteMutation.isError && (
+        <ApiError message={getErrorMessage(deleteMutation.error)} />
+      )}
 
       {!isLoading && !error && (
         <>
@@ -432,10 +453,7 @@ function PublicationExercisesTab() {
                   muscleGroupMap={muscleGroupMap}
                   onView={() => setDetail(pub)}
                   onEdit={() => { setEditing(pub); setDialogOpen(true); }}
-                  onDelete={() =>
-                    window.confirm(`Delete publication "${pub.exercise.title}"?`) &&
-                    deleteMutation.mutate(pub.id)
-                  }
+                  onDelete={() => requestDelete(pub)}
                 />
               ))}
             </div>
@@ -469,8 +487,7 @@ function PublicationExercisesTab() {
         }}
         onDelete={() => {
           if (!detail) return;
-          if (!window.confirm(`Delete publication "${detail.exercise.title}"?`)) return;
-          deleteMutation.mutate(detail.id, { onSuccess: () => setDetail(null) });
+          requestDelete(detail);
         }}
       />
     </div>
