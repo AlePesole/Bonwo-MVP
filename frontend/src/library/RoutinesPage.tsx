@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { routineApi, displayDuration, type RoutineFilter } from "@/routine/api";
 import { catalogApi } from "@/catalog/api";
 import { RoutineDialog } from "@/routine/RoutineDialog";
@@ -132,9 +132,9 @@ function RoutineCard({
 // ── Filter panel ──────────────────────────────────────────────────────────────
 
 function FilterPanel({ filter, onChange }: { filter: RoutineFilter; onChange: (f: RoutineFilter) => void }) {
-  const { data: equipment = [] } = useQuery({ queryKey: ["catalog", "equipment"], queryFn: catalogApi.listEquipment, staleTime: 60_000 });
-  const { data: activities = [] } = useQuery({ queryKey: ["catalog", "activities"], queryFn: catalogApi.listActivities, staleTime: 60_000 });
-  const { data: trainingGoals = [] } = useQuery({ queryKey: ["catalog", "training-goals"], queryFn: catalogApi.listTrainingGoals, staleTime: 60_000 });
+  const { data: equipment = [] } = useQuery({ queryKey: ["catalog", "equipment"], queryFn: catalogApi.listEquipment });
+  const { data: activities = [] } = useQuery({ queryKey: ["catalog", "activities"], queryFn: catalogApi.listActivities });
+  const { data: trainingGoals = [] } = useQuery({ queryKey: ["catalog", "training-goals"], queryFn: catalogApi.listTrainingGoals });
 
   const toggle = (field: "equipmentIds" | "activityIds" | "trainingGoalIds", id: number) => {
     const cur = filter[field] ?? [];
@@ -184,7 +184,6 @@ function RoutinesTab() {
   const { data: muscleGroups = [] } = useQuery({
     queryKey: ["catalog", "muscles"],
     queryFn: catalogApi.listMuscleGroups,
-    staleTime: 60_000,
   });
 
   const muscleGroupMap = useMemo(() => new Map(muscleGroups.map((g) => [g.id, g])), [muscleGroups]);
@@ -209,6 +208,7 @@ function RoutinesTab() {
         },
         page
       ),
+    placeholderData: keepPreviousData,
   });
 
   const routines = useMemo(() => {

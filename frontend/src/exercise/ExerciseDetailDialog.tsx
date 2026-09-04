@@ -641,6 +641,7 @@ function AddToRoutinePicker({
           onChange={(e) => { setSearch(e.target.value); setPage(0); }}
           placeholder="Search your routines…"
           className="h-8 text-sm flex-1"
+          aria-label="Search your routines"
           autoFocus
         />
       </div>

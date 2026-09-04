@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { exerciseApi, type ExerciseFilter } from "@/exercise/api";
 import { catalogApi } from "@/catalog/api";
 import { ExerciseDialog } from "@/exercise/ExerciseDialog";
@@ -183,17 +183,14 @@ function FilterPanel({
   const { data: equipment = [] } = useQuery({
     queryKey: ["catalog", "equipment"],
     queryFn: catalogApi.listEquipment,
-    staleTime: 60_000,
   });
   const { data: activities = [] } = useQuery({
     queryKey: ["catalog", "activities"],
     queryFn: catalogApi.listActivities,
-    staleTime: 60_000,
   });
   const { data: trainingGoals = [] } = useQuery({
     queryKey: ["catalog", "training-goals"],
     queryFn: catalogApi.listTrainingGoals,
-    staleTime: 60_000,
   });
 
   const toggle = (
@@ -258,15 +255,14 @@ function ExercisesTab() {
     setFilter((prev) => {
       const next = debouncedTitle || undefined;
       if (prev.title === next) return prev;
+      setPage(0);
       return { ...prev, title: next };
     });
-    setPage(0);
   }, [debouncedTitle]);
 
   const { data: muscleGroups = [] } = useQuery({
     queryKey: ["catalog", "muscles"],
     queryFn: catalogApi.listMuscleGroups,
-    staleTime: 60_000,
   });
 
   const muscleIds = filter.muscleGroupIds ?? [];
@@ -285,6 +281,7 @@ function ExercisesTab() {
   const { data, isLoading, error } = useQuery({
     queryKey: ["exercises", filter, page],
     queryFn: () => exerciseApi.list(filter, page),
+    placeholderData: keepPreviousData,
   });
 
   // Client-side filter when multi-select exceeds what the backend supports (single id).
@@ -349,6 +346,7 @@ function ExercisesTab() {
             value={titleDraft}
             onChange={(e) => setTitleDraft(e.target.value)}
             placeholder="Search by title…"
+            aria-label="Search by title"
             className="h-8 pl-8 text-sm"
           />
         </div>

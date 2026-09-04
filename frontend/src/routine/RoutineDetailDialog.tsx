@@ -484,6 +484,7 @@ function AddToProgramPicker({
           onChange={(e) => { setSearch(e.target.value); setPage(0); }}
           placeholder="Search your programs…"
           className="h-8 text-sm flex-1"
+          aria-label="Search your programs"
           autoFocus
         />
       </div>

@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { publicationApi, type PublicationFilter } from "@/publication/api";
 import { PublicationSortSelect } from "@/publication/PublicationSortSelect";
@@ -209,9 +209,9 @@ function ExploreExercisesFeed({ scope }: { scope: ExploreScope }) {
     setFilter((prev) => {
       const next = debouncedTitle || undefined;
       if (prev.title === next) return prev;
+      setPage(0);
       return { ...prev, title: next };
     });
-    setPage(0);
   }, [debouncedTitle]);
 
   useEffect(() => {
@@ -225,7 +225,6 @@ function ExploreExercisesFeed({ scope }: { scope: ExploreScope }) {
   const { data: muscleGroups = [] } = useQuery({
     queryKey: ["catalog", "muscles"],
     queryFn: catalogApi.listMuscleGroups,
-    staleTime: 60_000,
   });
   const muscleGroupMap = useMemo(() => new Map(muscleGroups.map((g) => [g.id, g])), [muscleGroups]);
 
@@ -246,22 +245,23 @@ function ExploreExercisesFeed({ scope }: { scope: ExploreScope }) {
   const { data, isLoading, error } = useQuery({
     queryKey: ["publications", "feed", scope, feedFilter, page],
     queryFn: () => publicationApi.listFeed(feedFilter, page),
+    placeholderData: keepPreviousData,
   });
 
   const { data: equipment = [] } = useQuery({
     queryKey: ["catalog", "equipment"],
     queryFn: catalogApi.listEquipment,
-    staleTime: 60_000,
+    enabled: filterOpen,
   });
   const { data: activities = [] } = useQuery({
     queryKey: ["catalog", "activities"],
     queryFn: catalogApi.listActivities,
-    staleTime: 60_000,
+    enabled: filterOpen,
   });
   const { data: trainingGoals = [] } = useQuery({
     queryKey: ["catalog", "training-goals"],
     queryFn: catalogApi.listTrainingGoals,
-    staleTime: 60_000,
+    enabled: filterOpen,
   });
 
   const toggleCatalog = (
@@ -293,6 +293,7 @@ function ExploreExercisesFeed({ scope }: { scope: ExploreScope }) {
             value={titleDraft}
             onChange={(e) => setTitleDraft(e.target.value)}
             placeholder="Search by title…"
+            aria-label="Search by title"
             className="h-8 pl-8 text-sm"
           />
         </div>

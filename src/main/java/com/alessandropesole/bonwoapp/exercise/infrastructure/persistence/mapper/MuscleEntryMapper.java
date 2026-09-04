@@ -3,6 +3,7 @@ package com.alessandropesole.bonwoapp.exercise.infrastructure.persistence.mapper
 import com.alessandropesole.bonwoapp.exercise.domain.model.MuscleEntry;
 import com.alessandropesole.bonwoapp.exercise.infrastructure.persistence.entity.MuscleEntryEmbeddable;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public final class MuscleEntryMapper {
@@ -24,7 +25,7 @@ public final class MuscleEntryMapper {
     }
 
     public static List<MuscleEntryEmbeddable> toEmbeddableList(List<MuscleEntry> list) {
-        if (list == null) return List.of();
-        return list.stream().map(MuscleEntryMapper::toEmbeddable).toList();
+        if (list == null) return new ArrayList<>();
+        return new ArrayList<>(list.stream().map(MuscleEntryMapper::toEmbeddable).toList());
     }
 }

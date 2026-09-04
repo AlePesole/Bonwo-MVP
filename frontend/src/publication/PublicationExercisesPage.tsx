@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { publicationApi, type PublicationFilter } from "@/publication/api";
 import { catalogApi } from "@/catalog/api";
 import { PublicationDialog } from "@/publication/PublicationDialog";
@@ -206,15 +206,14 @@ function PublicationExercisesTab() {
     setFilter((prev) => {
       const next = debouncedTitle || undefined;
       if (prev.title === next) return prev;
+      setPage(0);
       return { ...prev, title: next };
     });
-    setPage(0);
   }, [debouncedTitle]);
 
   const { data: muscleGroups = [] } = useQuery({
     queryKey: ["catalog", "muscles"],
     queryFn: catalogApi.listMuscleGroups,
-    staleTime: 60_000,
   });
   const muscleGroupMap = useMemo(() => new Map(muscleGroups.map((g) => [g.id, g])), [muscleGroups]);
 
@@ -234,22 +233,23 @@ function PublicationExercisesTab() {
   const { data, isLoading, error } = useQuery({
     queryKey: ["publications", "mine", filter, page],
     queryFn: () => publicationApi.listMine(filter, page),
+    placeholderData: keepPreviousData,
   });
 
   const { data: equipment = [] } = useQuery({
     queryKey: ["catalog", "equipment"],
     queryFn: catalogApi.listEquipment,
-    staleTime: 60_000,
+    enabled: filterOpen,
   });
   const { data: activities = [] } = useQuery({
     queryKey: ["catalog", "activities"],
     queryFn: catalogApi.listActivities,
-    staleTime: 60_000,
+    enabled: filterOpen,
   });
   const { data: trainingGoals = [] } = useQuery({
     queryKey: ["catalog", "training-goals"],
     queryFn: catalogApi.listTrainingGoals,
-    staleTime: 60_000,
+    enabled: filterOpen,
   });
 
   const deleteMutation = useMutation({
@@ -302,6 +302,7 @@ function PublicationExercisesTab() {
             value={titleDraft}
             onChange={(e) => setTitleDraft(e.target.value)}
             placeholder="Search by title…"
+            aria-label="Search by title"
             className="h-8 pl-8 text-sm"
           />
         </div>

@@ -115,6 +115,7 @@ function DurationInput({
         value={mins || ""}
         onChange={(e) => onChange(Number(e.target.value) * 60 + secs)}
         placeholder="0"
+        aria-label="minutes"
         className="w-12 h-8 rounded-md border border-input bg-background px-2 text-sm text-center"
       />
       <span className="text-xs text-muted-foreground">min</span>
@@ -125,6 +126,7 @@ function DurationInput({
         value={secs || ""}
         onChange={(e) => onChange(mins * 60 + Number(e.target.value))}
         placeholder={placeholder ?? "0"}
+        aria-label="seconds"
         className="w-12 h-8 rounded-md border border-input bg-background px-2 text-sm text-center"
       />
       <span className="text-xs text-muted-foreground">sec</span>
@@ -329,6 +331,7 @@ function ExercisePicker({
           onChange={(e) => handleTitleChange(e.target.value)}
           placeholder="Search exercises…"
           className="h-8 text-sm flex-1"
+          aria-label="Search exercises"
           autoFocus
         />
       </div>
@@ -773,6 +776,7 @@ function DuplicateRoutinePicker({
           onChange={(e) => { setSearch(e.target.value); setPage(0); }}
           placeholder="Search your routines…"
           className="h-8 text-sm flex-1"
+          aria-label="Search your routines"
           autoFocus
         />
       </div>
@@ -847,9 +851,9 @@ export function RoutineDialog({
   const [sourceThumbnailId, setSourceThumbnailId] = useState<number | undefined>();
   const thumb = useThumbnailUpload();
 
-  const { data: equipment = [] } = useQuery({ queryKey: ["catalog", "equipment"], queryFn: catalogApi.listEquipment, staleTime: 60_000 });
-  const { data: activities = [] } = useQuery({ queryKey: ["catalog", "activities"], queryFn: catalogApi.listActivities, staleTime: 60_000 });
-  const { data: trainingGoals = [] } = useQuery({ queryKey: ["catalog", "training-goals"], queryFn: catalogApi.listTrainingGoals, staleTime: 60_000 });
+  const { data: equipment = [] } = useQuery({ queryKey: ["catalog", "equipment"], queryFn: catalogApi.listEquipment, enabled: open });
+  const { data: activities = [] } = useQuery({ queryKey: ["catalog", "activities"], queryFn: catalogApi.listActivities, enabled: open });
+  const { data: trainingGoals = [] } = useQuery({ queryKey: ["catalog", "training-goals"], queryFn: catalogApi.listTrainingGoals, enabled: open });
 
   const { register, handleSubmit, control, watch, setValue, reset, formState: { errors } } = useForm<RoutineForm>({
     resolver: zodResolver(routineSchema),
@@ -1053,13 +1057,13 @@ export function RoutineDialog({
 
               <div className="grid grid-cols-3 gap-3">
                 <div className="col-span-2 space-y-1.5">
-                  <Label>Title</Label>
-                  <Input {...register("title")} placeholder="e.g. Push Day A" />
+                  <Label htmlFor="rtn-title">Title</Label>
+                  <Input id="rtn-title" {...register("title")} placeholder="e.g. Push Day A" />
                   {errors.title && <p className="text-xs text-destructive">{errors.title.message}</p>}
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Level</Label>
-                  <Select {...register("level")} className={selectClass}>
+                  <Label htmlFor="rtn-level">Level</Label>
+                  <Select id="rtn-level" {...register("level")} className={selectClass}>
                     {LEVELS.map((l) => (
                       <option key={l.value} value={l.value}>{l.label}</option>
                     ))}
@@ -1068,13 +1072,13 @@ export function RoutineDialog({
               </div>
 
               <div className="space-y-1.5">
-                <Label>Description <span className="text-muted-foreground">(optional)</span></Label>
-                <Textarea {...register("description")} rows={3} placeholder="Brief overview of this routine…" />
+                <Label htmlFor="rtn-description">Description <span className="text-muted-foreground">(optional)</span></Label>
+                <Textarea id="rtn-description" {...register("description")} rows={3} placeholder="Brief overview of this routine…" />
               </div>
 
               {/* Thumbnail */}
               <div className="space-y-1.5">
-                <Label>Thumbnail <span className="text-muted-foreground">(optional)</span></Label>
+                <Label htmlFor="rtn-thumbnail">Thumbnail <span className="text-muted-foreground">(optional)</span></Label>
                 <div className="flex items-center gap-3">
                   <div
                     className="h-16 w-16 rounded-lg border border-border bg-muted flex items-center justify-center cursor-pointer hover:bg-accent transition-colors shrink-0 overflow-hidden"
@@ -1095,7 +1099,7 @@ export function RoutineDialog({
                       <button type="button" onClick={() => { setSourceThumbnailId(undefined); thumb.remove(); }} className="text-xs text-destructive hover:underline text-left">Remove</button>
                     )}
                   </div>
-                  <input ref={thumb.fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => { setSourceThumbnailId(undefined); void thumb.handleFile(e); }} />
+                  <input id="rtn-thumbnail" ref={thumb.fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => { setSourceThumbnailId(undefined); void thumb.handleFile(e); }} />
                 </div>
                 {thumb.error && <p className="text-xs text-destructive">{thumb.error}</p>}
               </div>

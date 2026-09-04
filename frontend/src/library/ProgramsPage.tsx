@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { programApi, type ProgramFilter } from "@/program/api";
 import { catalogApi } from "@/catalog/api";
 import { ProgramDialog } from "@/program/ProgramDialog";
@@ -132,9 +132,9 @@ function ProgramCard({
 // ── Filter panel ──────────────────────────────────────────────────────────────
 
 function FilterPanel({ filter, onChange }: { filter: ProgramFilter; onChange: (f: ProgramFilter) => void }) {
-  const { data: equipment = [] } = useQuery({ queryKey: ["catalog", "equipment"], queryFn: catalogApi.listEquipment, staleTime: 60_000 });
-  const { data: activities = [] } = useQuery({ queryKey: ["catalog", "activities"], queryFn: catalogApi.listActivities, staleTime: 60_000 });
-  const { data: trainingGoals = [] } = useQuery({ queryKey: ["catalog", "training-goals"], queryFn: catalogApi.listTrainingGoals, staleTime: 60_000 });
+  const { data: equipment = [] } = useQuery({ queryKey: ["catalog", "equipment"], queryFn: catalogApi.listEquipment });
+  const { data: activities = [] } = useQuery({ queryKey: ["catalog", "activities"], queryFn: catalogApi.listActivities });
+  const { data: trainingGoals = [] } = useQuery({ queryKey: ["catalog", "training-goals"], queryFn: catalogApi.listTrainingGoals });
 
   const toggle = (field: "equipmentIds" | "activityIds" | "trainingGoalIds", id: number) => {
     const cur = filter[field] ?? [];
@@ -203,7 +203,6 @@ function ProgramsTab() {
   const { data: muscleGroups = [] } = useQuery({
     queryKey: ["catalog", "muscles"],
     queryFn: catalogApi.listMuscleGroups,
-    staleTime: 60_000,
   });
 
   const muscleGroupMap = useMemo(() => new Map(muscleGroups.map((g) => [g.id, g])), [muscleGroups]);
@@ -218,6 +217,7 @@ function ProgramsTab() {
   const { data, isLoading, error } = useQuery({
     queryKey: ["programs", filter, page],
     queryFn: () => programApi.list(filter, page),
+    placeholderData: keepPreviousData,
   });
 
   const deleteMutation = useMutation({

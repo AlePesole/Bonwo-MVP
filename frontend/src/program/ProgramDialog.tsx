@@ -177,6 +177,7 @@ function DurationInput({
         value={mins || ""}
         onChange={(e) => onChange(Number(e.target.value) * 60 + secs)}
         placeholder="0"
+        aria-label="minutes"
         className="w-12 h-8 rounded-md border border-input bg-background px-2 text-sm text-center"
       />
       <span className="text-xs text-muted-foreground">min</span>
@@ -187,6 +188,7 @@ function DurationInput({
         value={secs || ""}
         onChange={(e) => onChange(mins * 60 + Number(e.target.value))}
         placeholder="0"
+        aria-label="seconds"
         className="w-12 h-8 rounded-md border border-input bg-background px-2 text-sm text-center"
       />
       <span className="text-xs text-muted-foreground">sec</span>
@@ -444,6 +446,7 @@ function ExercisePicker({
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Search exercises…"
           className="h-8 text-sm flex-1"
+          aria-label="Search exercises"
           autoFocus
         />
       </div>
@@ -850,25 +853,25 @@ function ProgramRoutineSubDialog({
               <TabsContent value="info" className="space-y-4 mt-4">
                 <div className="grid grid-cols-3 gap-3">
                   <div className="col-span-2 space-y-1.5">
-                    <Label>Title</Label>
-                    <Input {...register("title")} placeholder="e.g. Push Day A" />
+                    <Label htmlFor="prg-rtn-title">Title</Label>
+                    <Input id="prg-rtn-title" {...register("title")} placeholder="e.g. Push Day A" />
                     {errors.title && <p className="text-xs text-destructive">{errors.title.message}</p>}
                   </div>
                   <div className="space-y-1.5">
-                    <Label>Level</Label>
-                    <select {...register("level")} className={selectClass}>
+                    <Label htmlFor="prg-rtn-level">Level</Label>
+                    <select id="prg-rtn-level" {...register("level")} className={selectClass}>
                       {LEVELS.map((l) => <option key={l.value} value={l.value}>{l.label}</option>)}
                     </select>
                   </div>
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label>Description <span className="text-muted-foreground">(optional)</span></Label>
-                  <Textarea {...register("description")} rows={3} placeholder="Brief overview of this routine…" />
+                  <Label htmlFor="prg-rtn-description">Description <span className="text-muted-foreground">(optional)</span></Label>
+                  <Textarea id="prg-rtn-description" {...register("description")} rows={3} placeholder="Brief overview of this routine…" />
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label>Thumbnail <span className="text-muted-foreground">(optional)</span></Label>
+                  <Label htmlFor="prg-rtn-thumbnail">Thumbnail <span className="text-muted-foreground">(optional)</span></Label>
                   <div className="flex items-center gap-3">
                     <div
                       className="h-16 w-16 rounded-lg border border-border bg-muted flex items-center justify-center cursor-pointer hover:bg-accent transition-colors shrink-0 overflow-hidden"
@@ -886,7 +889,7 @@ function ProgramRoutineSubDialog({
                         <button type="button" onClick={thumb.remove} className="text-xs text-destructive hover:underline text-left">Remove</button>
                       )}
                     </div>
-                    <input ref={thumb.fileRef} type="file" accept="image/*" className="hidden" onChange={thumb.handleFile} />
+                    <input id="prg-rtn-thumbnail" ref={thumb.fileRef} type="file" accept="image/*" className="hidden" onChange={thumb.handleFile} />
                   </div>
                   {thumb.error && <p className="text-xs text-destructive">{thumb.error}</p>}
                 </div>
@@ -1020,6 +1023,7 @@ function CopyRoutinePicker({
           onChange={(e) => { setSearch(e.target.value); setPage(0); }}
           placeholder="Search your routines…"
           className="h-8 text-sm flex-1"
+          aria-label="Search your routines"
           autoFocus
         />
       </div>
@@ -1140,6 +1144,7 @@ function DuplicateProgramPicker({
           onChange={(e) => { setSearch(e.target.value); setPage(0); }}
           placeholder="Search your programs…"
           className="h-8 text-sm flex-1"
+          aria-label="Search your programs"
           autoFocus
         />
       </div>
@@ -1270,9 +1275,9 @@ export function ProgramDialog({
   const [sourceThumbnailId, setSourceThumbnailId] = useState<number | undefined>();
   const thumb = useThumbnailUpload();
 
-  const { data: equipment = [] } = useQuery({ queryKey: ["catalog", "equipment"], queryFn: catalogApi.listEquipment, staleTime: 60_000 });
-  const { data: activities = [] } = useQuery({ queryKey: ["catalog", "activities"], queryFn: catalogApi.listActivities, staleTime: 60_000 });
-  const { data: trainingGoals = [] } = useQuery({ queryKey: ["catalog", "training-goals"], queryFn: catalogApi.listTrainingGoals, staleTime: 60_000 });
+  const { data: equipment = [] } = useQuery({ queryKey: ["catalog", "equipment"], queryFn: catalogApi.listEquipment, enabled: open });
+  const { data: activities = [] } = useQuery({ queryKey: ["catalog", "activities"], queryFn: catalogApi.listActivities, enabled: open });
+  const { data: trainingGoals = [] } = useQuery({ queryKey: ["catalog", "training-goals"], queryFn: catalogApi.listTrainingGoals, enabled: open });
 
   const { register, handleSubmit, watch, setValue, reset, formState: { errors } } = useForm<ProgramForm>({
     resolver: zodResolver(programSchema),
@@ -1521,34 +1526,34 @@ export function ProgramDialog({
 
                   <div className="grid grid-cols-3 gap-3">
                     <div className="col-span-2 space-y-1.5">
-                      <Label>Title</Label>
-                      <Input {...register("title")} placeholder="e.g. 12-Week Strength" />
+                      <Label htmlFor="prg-title">Title</Label>
+                      <Input id="prg-title" {...register("title")} placeholder="e.g. 12-Week Strength" />
                       {errors.title && <p className="text-xs text-destructive">{errors.title.message}</p>}
                     </div>
                     <div className="space-y-1.5">
-                      <Label>Level</Label>
-                      <select {...register("level")} className={selectClass}>
+                      <Label htmlFor="prg-level">Level</Label>
+                      <select id="prg-level" {...register("level")} className={selectClass}>
                         {LEVELS.map((l) => <option key={l.value} value={l.value}>{l.label}</option>)}
                       </select>
                     </div>
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label>Days per week</Label>
+                    <Label htmlFor="prg-days">Days per week</Label>
                     <div className="flex items-center gap-2">
-                      <Input type="number" min={1} max={7} {...register("daysPerWeek")} className="w-20" />
+                      <Input id="prg-days" type="number" min={1} max={7} {...register("daysPerWeek")} className="w-20" />
                       <span className="text-sm text-muted-foreground">days/week</span>
                     </div>
                     {errors.daysPerWeek && <p className="text-xs text-destructive">{errors.daysPerWeek.message}</p>}
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label>Description <span className="text-muted-foreground">(optional)</span></Label>
-                    <Textarea {...register("description")} rows={3} placeholder="Brief overview of this program…" />
+                    <Label htmlFor="prg-description">Description <span className="text-muted-foreground">(optional)</span></Label>
+                    <Textarea id="prg-description" {...register("description")} rows={3} placeholder="Brief overview of this program…" />
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label>Thumbnail <span className="text-muted-foreground">(optional)</span></Label>
+                    <Label htmlFor="prg-thumbnail">Thumbnail <span className="text-muted-foreground">(optional)</span></Label>
                     <div className="flex items-center gap-3">
                       <div
                         className="h-16 w-16 rounded-lg border border-border bg-muted flex items-center justify-center cursor-pointer hover:bg-accent transition-colors shrink-0 overflow-hidden"
@@ -1566,7 +1571,7 @@ export function ProgramDialog({
                           <button type="button" onClick={() => { setSourceThumbnailId(undefined); thumb.remove(); }} className="text-xs text-destructive hover:underline text-left">Remove</button>
                         )}
                       </div>
-                      <input ref={thumb.fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => { setSourceThumbnailId(undefined); void thumb.handleFile(e); }} />
+                      <input id="prg-thumbnail" ref={thumb.fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => { setSourceThumbnailId(undefined); void thumb.handleFile(e); }} />
                     </div>
                     {thumb.error && <p className="text-xs text-destructive">{thumb.error}</p>}
                   </div>
