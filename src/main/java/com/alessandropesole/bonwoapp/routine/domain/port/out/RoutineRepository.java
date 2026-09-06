@@ -13,8 +13,8 @@ public interface RoutineRepository {
 
     Optional<Routine> findById(Long id);
 
-    Page<Routine> findByOwner(Long ownerId, Set<Long> equipmentIds, Set<Long> activityIds,
-                              Set<Long> trainingGoalIds, Pageable pageable);
+    Page<Routine> findByOwner(Long ownerId, Set<Long> muscleSubGroupIds, Set<Long> equipmentIds,
+                              Set<Long> activityIds, Set<Long> trainingGoalIds, String title, Pageable pageable);
 
     List<Routine> findByTrainingProgramId(Long trainingProgramId);
 

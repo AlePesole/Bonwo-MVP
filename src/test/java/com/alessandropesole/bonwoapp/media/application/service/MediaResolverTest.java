@@ -15,7 +15,11 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Instant;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -77,5 +81,64 @@ class MediaResolverTest {
 
         assertThat(response.id()).isEqualTo(1L);
         assertThat(response.thumbnailUrl()).isEqualTo("thumb");
+    }
+
+    @Test
+    void resolveImages_returnsEmptyMapForEmptySetWithoutHittingRepository() {
+        Map<Long, ImageResponse> result = mediaResolver.resolveImages(Set.of());
+
+        assertThat(result).isEmpty();
+        verifyNoInteractions(imageRepository);
+    }
+
+    @Test
+    void resolveImages_emptyResultMapDoesNotThrowOnNullKeyLookup() {
+        // Reproduces the 500 seen when every exercise in a batch has no thumbnail: the caller does
+        // thumbnailMap.get(exercise.getThumbnailId()), which is null — Map.of() rejects null keys
+        // even on get(), so this must not be backed by Map.of().
+        Map<Long, ImageResponse> result = mediaResolver.resolveImages(Set.of());
+
+        assertThat(result.get(null)).isNull();
+    }
+
+    @Test
+    void resolveImages_filtersNullIdsAndReturnsMapKeyedById() {
+        Image image = Image.reconstitute(1L, 2L, "ext-id", "url", ImageStatus.ACTIVE,
+                null, null, Instant.now());
+        Set<Long> ids = new HashSet<>();
+        ids.add(1L);
+        ids.add(null);
+        when(imageRepository.findAllById(Set.of(1L))).thenReturn(List.of(image));
+
+        Map<Long, ImageResponse> result = mediaResolver.resolveImages(ids);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(1L).url()).isEqualTo("url");
+    }
+
+    @Test
+    void resolveVideos_returnsEmptyMapForEmptySetWithoutHittingRepository() {
+        Map<Long, VideoResponse> result = mediaResolver.resolveVideos(Set.of());
+
+        assertThat(result).isEmpty();
+        verifyNoInteractions(videoRepository);
+    }
+
+    @Test
+    void resolveVideos_emptyResultMapDoesNotThrowOnNullKeyLookup() {
+        Map<Long, VideoResponse> result = mediaResolver.resolveVideos(Set.of());
+
+        assertThat(result.get(null)).isNull();
+    }
+
+    @Test
+    void resolveVideos_returnsMapKeyedById() {
+        Video video = Video.reconstitute(1L, 2L, "ext-id", "url", "thumb", 30,
+                VideoStatus.ACTIVE, null, null, Instant.now());
+        when(videoRepository.findAllById(Set.of(1L))).thenReturn(List.of(video));
+
+        Map<Long, VideoResponse> result = mediaResolver.resolveVideos(Set.of(1L));
+
+        assertThat(result.get(1L).thumbnailUrl()).isEqualTo("thumb");
     }
 }

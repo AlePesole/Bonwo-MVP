@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { programApi, type ProgramFilter } from "@/program/api";
@@ -6,14 +6,16 @@ import { catalogApi } from "@/catalog/api";
 import { ProgramDialog } from "@/program/ProgramDialog";
 import { ProgramDetailDialog } from "@/program/ProgramDetailDialog";
 import { resolvePrimaryMuscleGroups } from "@/library/MuscleGroupFilterRow";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { cn } from "@/lib/utils";
 import { getErrorMessage } from "@/lib/axios";
 import type { Level, MuscleGroupResponse, TrainingProgramResponse } from "@/types/api";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { ApiError } from "@/components/ApiError";
 import { PageSpinner } from "@/components/Spinner";
-import { CalendarDays, ChevronLeft, Dumbbell, Layers, Pencil, Plus, SlidersHorizontal, Trash2, X } from "lucide-react";
+import { CalendarDays, ChevronLeft, Dumbbell, Layers, Pencil, Plus, Search, SlidersHorizontal, Trash2, X } from "lucide-react";
 
 // ── Level badge ───────────────────────────────────────────────────────────────
 
@@ -181,12 +183,23 @@ function FilterPanel({ filter, onChange }: { filter: ProgramFilter; onChange: (f
 function ProgramsTab() {
   const qc = useQueryClient();
   const [filter, setFilter] = useState<ProgramFilter>({});
+  const [titleDraft, setTitleDraft] = useState("");
+  const debouncedTitle = useDebouncedValue(titleDraft.trim(), 350);
   const [page, setPage] = useState(0);
   const [filterOpen, setFilterOpen] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<TrainingProgramResponse | null>(null);
   const [seedFrom, setSeedFrom] = useState<TrainingProgramResponse | null>(null);
   const [detailProgram, setDetailProgram] = useState<TrainingProgramResponse | null>(null);
+
+  useEffect(() => {
+    setFilter((prev) => {
+      const next = debouncedTitle || undefined;
+      if (prev.title === next) return prev;
+      setPage(0);
+      return { ...prev, title: next };
+    });
+  }, [debouncedTitle]);
 
   const { data: muscleGroups = [] } = useQuery({
     queryKey: ["catalog", "muscles"],
@@ -201,6 +214,7 @@ function ProgramsTab() {
     (filter.equipmentIds?.length ?? 0) +
     (filter.activityIds?.length ?? 0) +
     (filter.trainingGoalIds?.length ?? 0);
+  const hasAnyFilter = activeFilters > 0 || !!filter.title;
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["programs", filter, page],
@@ -217,6 +231,16 @@ function ProgramsTab() {
     <div className="space-y-4">
       {/* Toolbar */}
       <div className="flex items-center gap-2 flex-wrap">
+        <div className="relative flex-1 min-w-[160px] max-w-xs">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <Input
+            value={titleDraft}
+            onChange={(e) => setTitleDraft(e.target.value)}
+            placeholder="Search by title…"
+            aria-label="Search by title"
+            className="h-8 pl-8 text-sm"
+          />
+        </div>
         <Button
           variant="outline"
           size="sm"
@@ -231,8 +255,8 @@ function ProgramsTab() {
             </span>
           )}
         </Button>
-        {activeFilters > 0 && (
-          <Button variant="ghost" size="sm" className="gap-1 text-muted-foreground" onClick={() => { setFilter({}); setPage(0); }}>
+        {hasAnyFilter && (
+          <Button variant="ghost" size="sm" className="gap-1 text-muted-foreground" onClick={() => { setFilter({}); setTitleDraft(""); setPage(0); }}>
             <X className="h-3.5 w-3.5" /> Clear
           </Button>
         )}
@@ -253,7 +277,9 @@ function ProgramsTab() {
           {!data?.content.length ? (
             <div className="text-center py-16 text-muted-foreground">
               <CalendarDays className="h-10 w-10 mx-auto mb-3 opacity-30" />
-              <p className="text-sm">No programs yet. Create your first one!</p>
+              <p className="text-sm">
+                {hasAnyFilter ? "No programs match the current filters." : "No programs yet. Create your first one!"}
+              </p>
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">

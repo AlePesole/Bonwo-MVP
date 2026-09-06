@@ -30,9 +30,9 @@ public class RoutineRepositoryAdapter implements RoutineRepository {
     }
 
     @Override
-    public Page<Routine> findByOwner(Long ownerId, Set<Long> equipmentIds, Set<Long> activityIds,
-                                     Set<Long> trainingGoalIds, Pageable pageable) {
-        var spec = RoutineSpecifications.matching(ownerId, equipmentIds, activityIds, trainingGoalIds);
+    public Page<Routine> findByOwner(Long ownerId, Set<Long> muscleSubGroupIds, Set<Long> equipmentIds,
+                                     Set<Long> activityIds, Set<Long> trainingGoalIds, String title, Pageable pageable) {
+        var spec = RoutineSpecifications.matching(ownerId, muscleSubGroupIds, equipmentIds, activityIds, trainingGoalIds, title);
         return jpa.findAll(spec, pageable).map(RoutineMapper::toDomain);
     }
 

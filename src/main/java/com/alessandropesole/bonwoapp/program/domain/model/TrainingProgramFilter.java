@@ -5,5 +5,6 @@ import java.util.Set;
 public record TrainingProgramFilter(
         Set<Long> equipmentIds,
         Set<Long> activityIds,
-        Set<Long> trainingGoalIds
+        Set<Long> trainingGoalIds,
+        String title
 ) {}

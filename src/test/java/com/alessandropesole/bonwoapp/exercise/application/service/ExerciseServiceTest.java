@@ -1,6 +1,7 @@
 package com.alessandropesole.bonwoapp.exercise.application.service;
 
 import com.alessandropesole.bonwoapp.catalog.application.service.CatalogValidator;
+import com.alessandropesole.bonwoapp.catalog.domain.model.Equipment;
 import com.alessandropesole.bonwoapp.catalog.domain.model.MuscleSubGroup;
 import com.alessandropesole.bonwoapp.catalog.domain.port.out.ActivityRepository;
 import com.alessandropesole.bonwoapp.catalog.domain.port.out.EquipmentRepository;
@@ -27,6 +28,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -126,6 +128,76 @@ class ExerciseServiceTest {
 
         assertThatThrownBy(() -> exerciseService.getById(1L, OWNER_ID))
                 .isInstanceOf(ForbiddenOperationException.class);
+    }
+
+    @Test
+    void getVisibleByIds_returnsEmptyMapForEmptyIdSet() {
+        Map<Long, ExerciseResponse> result = exerciseService.getVisibleByIds(Set.of(), OWNER_ID);
+
+        assertThat(result).isEmpty();
+        verifyNoInteractions(exerciseRepository, exerciseVisibilityResolver);
+    }
+
+    @Test
+    void getVisibleByIds_returnsMapKeyedByIdForVisibleExercises() {
+        Exercise bench = Exercise.reconstitute(1L, OWNER_ID, "Bench Press", Level.INTERMEDIATE,
+                null, null, null, null, List.of(), null, Set.of(), Set.of(), Set.of(), null, null);
+        Exercise squat = Exercise.reconstitute(2L, OWNER_ID, "Squat", Level.INTERMEDIATE,
+                null, null, null, null, List.of(), null, Set.of(), Set.of(), Set.of(), null, null);
+        when(exerciseRepository.findAllById(Set.of(1L, 2L))).thenReturn(List.of(bench, squat));
+        when(exerciseVisibilityResolver.isVisibleBulk(List.of(bench, squat), OWNER_ID))
+                .thenReturn(Map.of(1L, true, 2L, true));
+
+        Map<Long, ExerciseResponse> result = exerciseService.getVisibleByIds(Set.of(1L, 2L), OWNER_ID);
+
+        assertThat(result).hasSize(2);
+        assertThat(result.get(1L).title()).isEqualTo("Bench Press");
+        assertThat(result.get(2L).title()).isEqualTo("Squat");
+    }
+
+    @Test
+    void getVisibleByIds_excludesExercisesNotVisibleToViewer() {
+        Exercise owned = Exercise.reconstitute(1L, OWNER_ID, "Bench Press", Level.INTERMEDIATE,
+                null, null, null, null, List.of(), null, Set.of(), Set.of(), Set.of(), null, null);
+        Exercise notVisible = Exercise.reconstitute(2L, 999L, "Squat", Level.INTERMEDIATE,
+                null, null, null, null, List.of(), null, Set.of(), Set.of(), Set.of(), null, null);
+        when(exerciseRepository.findAllById(Set.of(1L, 2L))).thenReturn(List.of(owned, notVisible));
+        when(exerciseVisibilityResolver.isVisibleBulk(List.of(owned, notVisible), OWNER_ID))
+                .thenReturn(Map.of(1L, true, 2L, false));
+
+        Map<Long, ExerciseResponse> result = exerciseService.getVisibleByIds(Set.of(1L, 2L), OWNER_ID);
+
+        assertThat(result).containsOnlyKeys(1L);
+    }
+
+    @Test
+    void getVisibleByIds_omitsIdsNotFoundWithoutThrowing() {
+        Exercise bench = Exercise.reconstitute(1L, OWNER_ID, "Bench Press", Level.INTERMEDIATE,
+                null, null, null, null, List.of(), null, Set.of(), Set.of(), Set.of(), null, null);
+        when(exerciseRepository.findAllById(Set.of(1L, 999L))).thenReturn(List.of(bench));
+        when(exerciseVisibilityResolver.isVisibleBulk(List.of(bench), OWNER_ID))
+                .thenReturn(Map.of(1L, true));
+
+        Map<Long, ExerciseResponse> result = exerciseService.getVisibleByIds(Set.of(1L, 999L), OWNER_ID);
+
+        assertThat(result).containsOnlyKeys(1L);
+    }
+
+    @Test
+    void getVisibleByIds_batchesEquipmentLookupAcrossExercisesInsteadOfPerExercise() {
+        Exercise bench = Exercise.reconstitute(1L, OWNER_ID, "Bench Press", Level.INTERMEDIATE,
+                null, null, null, null, List.of(), null, Set.of(9L), Set.of(), Set.of(), null, null);
+        Exercise inclineBench = Exercise.reconstitute(2L, OWNER_ID, "Incline Bench Press", Level.INTERMEDIATE,
+                null, null, null, null, List.of(), null, Set.of(9L), Set.of(), Set.of(), null, null);
+        when(exerciseRepository.findAllById(Set.of(1L, 2L))).thenReturn(List.of(bench, inclineBench));
+        when(exerciseVisibilityResolver.isVisibleBulk(List.of(bench, inclineBench), OWNER_ID))
+                .thenReturn(Map.of(1L, true, 2L, true));
+        when(equipmentRepository.findAllById(Set.of(9L)))
+                .thenReturn(List.of(Equipment.reconstitute(9L, "Barbell", null)));
+
+        exerciseService.getVisibleByIds(Set.of(1L, 2L), OWNER_ID);
+
+        verify(equipmentRepository, times(1)).findAllById(any());
     }
 
     @Test

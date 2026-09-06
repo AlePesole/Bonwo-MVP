@@ -34,6 +34,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -160,16 +163,14 @@ public class TrainingSessionService implements TrainingSessionUseCase {
     }
 
     private TrainingSessionResponse toResponse(TrainingSession s, Long ownerId) {
+        Set<Long> exerciseIds = s.getSlots().stream()
+                .map(TrainingSlot::getExerciseId)
+                .collect(Collectors.toSet());
+        Map<Long, ExerciseResponse> exercises = exerciseUseCase.getVisibleByIds(exerciseIds, ownerId);
+
         List<TrainingSlotResponse> slots = s.getSlots().stream()
-                .map(slot -> TrainingSlotDtoMapper.toResponse(slot, resolveExercise(slot.getExerciseId(), ownerId)))
+                .map(slot -> TrainingSlotDtoMapper.toResponse(slot, exercises.get(slot.getExerciseId())))
                 .toList();
         return TrainingSessionDtoMapper.toResponse(s, slots);
-    }
-
-    private ExerciseResponse resolveExercise(Long exerciseId, Long ownerId) {
-        return exerciseRepository.findById(exerciseId)
-                .filter(e -> exerciseVisibilityResolver.isVisible(e, ownerId))
-                .map(e -> exerciseUseCase.getById(exerciseId, ownerId))
-                .orElse(null);
     }
 }

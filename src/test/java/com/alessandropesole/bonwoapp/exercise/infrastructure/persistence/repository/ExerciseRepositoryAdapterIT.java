@@ -93,6 +93,18 @@ class ExerciseRepositoryAdapterIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void findAllById_returnsOnlyMatchingExercises() {
+        Exercise saved1 = exerciseRepository.save(basicExercise(1L, "Squat"));
+        exerciseRepository.save(basicExercise(1L, "Deadlift"));
+        Exercise saved3 = exerciseRepository.save(basicExercise(1L, "Bench Press"));
+
+        var result = exerciseRepository.findAllById(Set.of(saved1.getId(), saved3.getId()));
+
+        assertThat(result).extracting(Exercise::getTitle)
+                .containsExactlyInAnyOrder("Squat", "Bench Press");
+    }
+
+    @Test
     void deleteById_removesExercise() {
         Exercise saved = exerciseRepository.save(basicExercise(1L, "Lunges"));
 

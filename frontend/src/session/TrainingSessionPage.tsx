@@ -973,6 +973,20 @@ export function TrainingSessionPage() {
               Edit session
             </Button>
           )}
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full gap-2 text-destructive border-destructive/40 hover:bg-destructive/10"
+            disabled={deleteMutation.isPending}
+            onClick={() => {
+              if (window.confirm("Delete this completed training session?")) {
+                deleteMutation.mutate();
+              }
+            }}
+          >
+            <Trash2 className="h-4 w-4" />
+            Delete
+          </Button>
         </div>
       )}
 

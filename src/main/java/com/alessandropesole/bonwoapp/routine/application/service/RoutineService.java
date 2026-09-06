@@ -7,8 +7,10 @@ import com.alessandropesole.bonwoapp.catalog.application.mapper.ActivityDtoMappe
 import com.alessandropesole.bonwoapp.catalog.application.mapper.EquipmentDtoMapper;
 import com.alessandropesole.bonwoapp.catalog.application.mapper.TrainingGoalDtoMapper;
 import com.alessandropesole.bonwoapp.catalog.application.service.CatalogValidator;
+import com.alessandropesole.bonwoapp.catalog.domain.model.MuscleSubGroup;
 import com.alessandropesole.bonwoapp.catalog.domain.port.out.ActivityRepository;
 import com.alessandropesole.bonwoapp.catalog.domain.port.out.EquipmentRepository;
+import com.alessandropesole.bonwoapp.catalog.domain.port.out.MuscleSubGroupRepository;
 import com.alessandropesole.bonwoapp.catalog.domain.port.out.TrainingGoalRepository;
 import com.alessandropesole.bonwoapp.exercise.application.dto.ExerciseResponse;
 import com.alessandropesole.bonwoapp.exercise.domain.model.Exercise;
@@ -40,6 +42,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -53,6 +56,7 @@ public class RoutineService implements RoutineUseCase {
     private final EquipmentRepository equipmentRepository;
     private final ActivityRepository activityRepository;
     private final TrainingGoalRepository trainingGoalRepository;
+    private final MuscleSubGroupRepository muscleSubGroupRepository;
     private final CatalogValidator catalogValidator;
     private final MediaService mediaService;
     private final MediaResolver mediaResolver;
@@ -144,9 +148,22 @@ public class RoutineService implements RoutineUseCase {
     @Override
     @Transactional(readOnly = true)
     public Page<RoutineResponse> listMine(Long ownerId, RoutineFilter filter, Pageable pageable) {
-        return routineRepository.findByOwner(ownerId, filter.equipmentIds(), filter.activityIds(),
-                        filter.trainingGoalIds(), pageable)
+        Set<Long> muscleSubGroupIds = resolveMuscleSubGroupIds(filter);
+        return routineRepository.findByOwner(ownerId, muscleSubGroupIds, filter.equipmentIds(),
+                        filter.activityIds(), filter.trainingGoalIds(), filter.title(), pageable)
                 .map(r -> toResponse(r, ownerId));
+    }
+
+    private Set<Long> resolveMuscleSubGroupIds(RoutineFilter filter) {
+        if (filter.muscleSubGroupId() != null) {
+            return Set.of(filter.muscleSubGroupId());
+        }
+        if (filter.muscleGroupId() != null) {
+            return muscleSubGroupRepository.findByGroupId(filter.muscleGroupId()).stream()
+                    .map(MuscleSubGroup::getId)
+                    .collect(Collectors.toSet());
+        }
+        return Set.of();
     }
 
     /**
@@ -213,8 +230,13 @@ public class RoutineService implements RoutineUseCase {
                 .map(t -> TrainingGoalDtoMapper.toResponse(t, mediaResolver.resolveImage(t.getIconId())))
                 .toList();
 
+        Set<Long> exerciseIds = r.getSlots().stream()
+                .map(ExerciseSlot::getExerciseId)
+                .collect(Collectors.toSet());
+        Map<Long, ExerciseResponse> exercises = exerciseUseCase.getVisibleByIds(exerciseIds, ownerId);
+
         List<ExerciseSlotResponse> slots = r.getSlots().stream()
-                .map(slot -> ExerciseSlotDtoMapper.toResponse(slot, resolveExercise(slot.getExerciseId(), ownerId)))
+                .map(slot -> ExerciseSlotDtoMapper.toResponse(slot, exercises.get(slot.getExerciseId())))
                 .toList();
 
         return RoutineDtoMapper.toResponse(
@@ -222,12 +244,5 @@ public class RoutineService implements RoutineUseCase {
                 mediaResolver.resolveImage(r.getThumbnailId()),
                 slots
         );
-    }
-
-    private ExerciseResponse resolveExercise(Long exerciseId, Long ownerId) {
-        return exerciseRepository.findById(exerciseId)
-                .filter(e -> exerciseVisibilityResolver.isVisible(e, ownerId))
-                .map(e -> exerciseUseCase.getById(exerciseId, ownerId))
-                .orElse(null);
     }
 }

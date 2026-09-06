@@ -2,6 +2,7 @@ import { api } from "@/lib/axios";
 import type { PageResponse, RoutineResponse } from "@/types/api";
 
 export interface RoutineFilter {
+  title?: string;
   muscleGroupIds?: number[];
   muscleSubGroupIds?: number[];
   equipmentIds?: number[];
@@ -37,6 +38,14 @@ export interface RoutinePayload {
 
 function buildParams(filter: RoutineFilter, page: number, size: number): URLSearchParams {
   const p = new URLSearchParams();
+  if (filter.title) p.set("title", filter.title);
+  // Backend only accepts a single muscleGroupId / muscleSubGroupId.
+  // Multiple selections are filtered client-side.
+  if (filter.muscleSubGroupIds?.length === 1) {
+    p.set("muscleSubGroupId", String(filter.muscleSubGroupIds[0]));
+  } else if (filter.muscleGroupIds?.length === 1 && !filter.muscleSubGroupIds?.length) {
+    p.set("muscleGroupId", String(filter.muscleGroupIds[0]));
+  }
   filter.equipmentIds?.forEach((id) => p.append("equipmentIds", String(id)));
   filter.activityIds?.forEach((id) => p.append("activityIds", String(id)));
   filter.trainingGoalIds?.forEach((id) => p.append("trainingGoalIds", String(id)));

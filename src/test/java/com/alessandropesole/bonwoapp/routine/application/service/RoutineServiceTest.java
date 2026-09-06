@@ -98,6 +98,8 @@ class RoutineServiceTest {
         when(exerciseRepository.findById(EXERCISE_ID)).thenReturn(Optional.of(exercise));
         when(exerciseVisibilityResolver.isVisible(exercise, OWNER_ID)).thenReturn(true);
         when(exerciseUseCase.getById(EXERCISE_ID, OWNER_ID)).thenReturn(exerciseResponse(Map.of(1L, 0.8)));
+        when(exerciseUseCase.getVisibleByIds(Set.of(EXERCISE_ID), OWNER_ID))
+                .thenReturn(Map.of(EXERCISE_ID, exerciseResponse(Map.of(1L, 0.8))));
         when(muscleSummaryCalculator.aggregate(anyList())).thenReturn(MuscleSummary.of(Map.of(1L, 0.8)));
         when(routineRepository.save(any(Routine.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -119,6 +121,8 @@ class RoutineServiceTest {
         when(exerciseRepository.findById(EXERCISE_ID)).thenReturn(Optional.of(exercise));
         when(exerciseVisibilityResolver.isVisible(exercise, OWNER_ID)).thenReturn(true);
         when(exerciseUseCase.getById(EXERCISE_ID, OWNER_ID)).thenReturn(exerciseResponse(Map.of(1L, 0.8)));
+        when(exerciseUseCase.getVisibleByIds(Set.of(EXERCISE_ID), OWNER_ID))
+                .thenReturn(Map.of(EXERCISE_ID, exerciseResponse(Map.of(1L, 0.8))));
         when(muscleSummaryCalculator.aggregate(anyList())).thenReturn(MuscleSummary.of(Map.of(1L, 0.8)));
         when(routineRepository.save(any(Routine.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -228,11 +232,9 @@ class RoutineServiceTest {
         Routine routine = Routine.reconstitute(10L, OWNER_ID, "Push Day", null, Level.INTERMEDIATE,
                 null, Duration.ZERO, List.of(slot), null, MuscleSummary.empty(),
                 Set.of(), Set.of(), Set.of(), null, null, null);
-        Exercise exercise = ownedExercise();
         when(routineRepository.findById(10L)).thenReturn(Optional.of(routine));
-        when(exerciseRepository.findById(EXERCISE_ID)).thenReturn(Optional.of(exercise));
-        when(exerciseVisibilityResolver.isVisible(exercise, OWNER_ID)).thenReturn(true);
-        when(exerciseUseCase.getById(EXERCISE_ID, OWNER_ID)).thenReturn(exerciseResponse(Map.of()));
+        when(exerciseUseCase.getVisibleByIds(Set.of(EXERCISE_ID), OWNER_ID))
+                .thenReturn(Map.of(EXERCISE_ID, exerciseResponse(Map.of())));
 
         RoutineResponse response = routineService.getById(10L, OWNER_ID);
 
@@ -248,7 +250,7 @@ class RoutineServiceTest {
                 null, Duration.ZERO, List.of(slot), null, MuscleSummary.empty(),
                 Set.of(), Set.of(), Set.of(), null, null, null);
         when(routineRepository.findById(10L)).thenReturn(Optional.of(routine));
-        when(exerciseRepository.findById(EXERCISE_ID)).thenReturn(Optional.empty());
+        when(exerciseUseCase.getVisibleByIds(Set.of(EXERCISE_ID), OWNER_ID)).thenReturn(Map.of());
 
         RoutineResponse response = routineService.getById(10L, OWNER_ID);
 
