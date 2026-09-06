@@ -14,9 +14,11 @@ import { WorkoutsPage } from "@/library/WorkoutsPage";
 import { RoutinesPage } from "@/library/RoutinesPage";
 import ProgramsPage from "@/library/ProgramsPage";
 import { LibraryCollectionPage } from "@/library/LibraryCollectionPage";
+import { SessionsPage } from "@/session/SessionsPage";
 import { PublicationPage } from "@/publication/PublicationPage";
 import { PublicationExercisesPage } from "@/publication/PublicationExercisesPage";
 import { ExplorePage } from "@/explore/ExplorePage";
+import { TrainingSessionPage } from "@/session/TrainingSessionPage";
 
 export default function App() {
   return (
@@ -91,6 +93,23 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <LibraryCollectionPage source="likes" />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/sessions"
+            element={
+              <ProtectedRoute>
+                <SessionsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="/library/sessions" element={<Navigate to="/sessions" replace />} />
+          <Route
+            path="/training-sessions/:id"
+            element={
+              <ProtectedRoute>
+                <TrainingSessionPage />
               </ProtectedRoute>
             }
           />

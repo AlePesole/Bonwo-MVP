@@ -236,7 +236,7 @@ const LEVEL_BADGE: Record<string, string> = {
   ADVANCED: "bg-red-500/20 text-red-400",
 };
 
-function ExercisePicker({
+export function ExercisePicker({
   onSelect,
   onBack,
   excludeIds,
