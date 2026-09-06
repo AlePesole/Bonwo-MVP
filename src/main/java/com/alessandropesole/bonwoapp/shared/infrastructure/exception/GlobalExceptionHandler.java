@@ -1,16 +1,31 @@
 package com.alessandropesole.bonwoapp.shared.infrastructure.exception;
 
+import com.alessandropesole.bonwoapp.catalog.application.exception.DuplicateNameException;
+import com.alessandropesole.bonwoapp.media.domain.exception.MediaNotOwnedException;
+import com.alessandropesole.bonwoapp.session.domain.exception.SessionAlreadyCompletedException;
+import com.alessandropesole.bonwoapp.session.domain.exception.SessionAlreadyInProgressException;
 import com.alessandropesole.bonwoapp.shared.domain.DomainException;
+import com.alessandropesole.bonwoapp.user.application.exception.EmailAlreadyRegisteredException;
+import com.alessandropesole.bonwoapp.user.application.exception.InvalidRefreshTokenException;
+import com.alessandropesole.bonwoapp.user.application.exception.UsernameAlreadyTakenException;
+import com.alessandropesole.bonwoapp.user.domain.exception.AlreadyBannedException;
+import com.alessandropesole.bonwoapp.user.domain.exception.NotBannedException;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.LockedException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
@@ -22,6 +37,73 @@ import java.util.stream.Collectors;
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    @ExceptionHandler(InvalidRefreshTokenException.class)
+    public ProblemDetail handleInvalidRefreshToken(InvalidRefreshTokenException ex) {
+        ProblemDetail detail = ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, ex.getMessage());
+        detail.setType(URI.create("/errors/unauthorized"));
+        detail.setProperty("timestamp", Instant.now());
+        return detail;
+    }
+
+    @ExceptionHandler({
+            EmailAlreadyRegisteredException.class,
+            UsernameAlreadyTakenException.class,
+            DuplicateNameException.class,
+            SessionAlreadyInProgressException.class,
+            SessionAlreadyCompletedException.class,
+            AlreadyBannedException.class,
+            NotBannedException.class
+    })
+    public ProblemDetail handleConflict(DomainException ex) {
+        ProblemDetail detail = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
+        detail.setType(URI.create("/errors/conflict"));
+        detail.setProperty("timestamp", Instant.now());
+        return detail;
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ProblemDetail handleDataIntegrityViolation(DataIntegrityViolationException ex) {
+        log.warn("Data integrity violation", ex);
+        ProblemDetail detail = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT,
+                "This action conflicts with existing data");
+        detail.setType(URI.create("/errors/conflict"));
+        detail.setProperty("timestamp", Instant.now());
+        return detail;
+    }
+
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ProblemDetail handleMissingParameter(MissingServletRequestParameterException ex) {
+        ProblemDetail detail = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+        detail.setType(URI.create("/errors/bad-request"));
+        detail.setProperty("timestamp", Instant.now());
+        return detail;
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ProblemDetail handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
+        ProblemDetail detail = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST,
+                "Invalid value for parameter '" + ex.getName() + "'");
+        detail.setType(URI.create("/errors/bad-request"));
+        detail.setProperty("timestamp", Instant.now());
+        return detail;
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ProblemDetail handleMessageNotReadable(HttpMessageNotReadableException ex) {
+        ProblemDetail detail = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Malformed request body");
+        detail.setType(URI.create("/errors/bad-request"));
+        detail.setProperty("timestamp", Instant.now());
+        return detail;
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ProblemDetail handleIllegalArgument(IllegalArgumentException ex) {
+        ProblemDetail detail = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+        detail.setType(URI.create("/errors/bad-request"));
+        detail.setProperty("timestamp", Instant.now());
+        return detail;
+    }
 
     @ExceptionHandler(DomainException.class)
     public ProblemDetail handleDomainException(DomainException ex) {
@@ -48,6 +130,22 @@ public class GlobalExceptionHandler {
         return detail;
     }
 
+    @ExceptionHandler(LockedException.class)
+    public ProblemDetail handleLocked(LockedException ex) {
+        ProblemDetail detail = ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, "Your account has been banned");
+        detail.setType(URI.create("/errors/forbidden"));
+        detail.setProperty("timestamp", Instant.now());
+        return detail;
+    }
+
+    @ExceptionHandler(AuthenticationException.class)
+    public ProblemDetail handleAuthentication(AuthenticationException ex) {
+        ProblemDetail detail = ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, "Invalid email or password");
+        detail.setType(URI.create("/errors/unauthorized"));
+        detail.setProperty("timestamp", Instant.now());
+        return detail;
+    }
+
     @ExceptionHandler(AccessDeniedException.class)
     public ProblemDetail handleAccessDenied(AccessDeniedException ex) {
         ProblemDetail detail = ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, "Access denied");
@@ -56,8 +154,8 @@ public class GlobalExceptionHandler {
         return detail;
     }
 
-    @ExceptionHandler(ForbiddenOperationException.class)
-    public ProblemDetail handleForbiddenOperation(ForbiddenOperationException ex) {
+    @ExceptionHandler({ForbiddenOperationException.class, MediaNotOwnedException.class})
+    public ProblemDetail handleForbiddenOperation(RuntimeException ex) {
         ProblemDetail detail = ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, ex.getMessage());
         detail.setType(URI.create("/errors/forbidden"));
         detail.setProperty("timestamp", Instant.now());
