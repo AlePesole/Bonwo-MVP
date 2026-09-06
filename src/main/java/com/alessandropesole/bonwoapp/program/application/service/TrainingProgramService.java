@@ -135,7 +135,7 @@ public class TrainingProgramService implements TrainingProgramUseCase {
     @Transactional(readOnly = true)
     public Page<TrainingProgramResponse> listMine(Long ownerId, TrainingProgramFilter filter, Pageable pageable) {
         return trainingProgramRepository.findByOwner(ownerId, filter.equipmentIds(), filter.activityIds(),
-                        filter.trainingGoalIds(), pageable)
+                        filter.trainingGoalIds(), filter.title(), pageable)
                 .map(p -> toResponse(p, fetchRoutines(p.getId(), ownerId), ownerId));
     }
 

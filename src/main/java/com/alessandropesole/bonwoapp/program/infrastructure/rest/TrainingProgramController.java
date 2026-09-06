@@ -41,9 +41,10 @@ public class TrainingProgramController {
             @RequestParam(required = false) Set<Long> equipmentIds,
             @RequestParam(required = false) Set<Long> activityIds,
             @RequestParam(required = false) Set<Long> trainingGoalIds,
+            @RequestParam(required = false) String title,
             @PageableDefault(size = 20, sort = "createdAt") Pageable pageable) {
         Long userId = currentUserResolver.resolveId(principal);
-        var filter = new TrainingProgramFilter(equipmentIds, activityIds, trainingGoalIds);
+        var filter = new TrainingProgramFilter(equipmentIds, activityIds, trainingGoalIds, title);
         return ResponseEntity.ok(trainingProgramUseCase.listMine(userId, filter, pageable));
     }
 

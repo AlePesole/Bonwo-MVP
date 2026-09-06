@@ -2,6 +2,7 @@ import { api } from "@/lib/axios";
 import type { PageResponse, ProgramRoutineDto, TrainingProgramResponse } from "@/types/api";
 
 export interface ProgramFilter {
+  title?: string;
   equipmentIds?: number[];
   activityIds?: number[];
   trainingGoalIds?: number[];
@@ -24,6 +25,7 @@ export interface ProgramPayload {
 
 function buildParams(filter: ProgramFilter, page: number, size: number): URLSearchParams {
   const p = new URLSearchParams();
+  if (filter.title) p.set("title", filter.title);
   filter.equipmentIds?.forEach((id) => p.append("equipmentIds", String(id)));
   filter.activityIds?.forEach((id) => p.append("activityIds", String(id)));
   filter.trainingGoalIds?.forEach((id) => p.append("trainingGoalIds", String(id)));

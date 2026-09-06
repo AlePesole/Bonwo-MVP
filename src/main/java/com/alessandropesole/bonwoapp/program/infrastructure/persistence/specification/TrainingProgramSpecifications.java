@@ -11,12 +11,16 @@ public final class TrainingProgramSpecifications {
     }
 
     public static Specification<TrainingProgramJpaEntity> matching(Long ownerId, Set<Long> equipmentIds,
-                                                                   Set<Long> activityIds, Set<Long> trainingGoalIds) {
+                                                                   Set<Long> activityIds, Set<Long> trainingGoalIds,
+                                                                   String title) {
         return (root, query, cb) -> {
             query.distinct(true);
 
             var predicate = cb.equal(root.get("ownerId"), ownerId);
 
+            if (title != null && !title.isBlank()) {
+                predicate = cb.and(predicate, cb.like(cb.lower(root.get("title")), "%" + title.toLowerCase() + "%"));
+            }
             if (equipmentIds != null && !equipmentIds.isEmpty()) {
                 var equipment = root.<TrainingProgramJpaEntity, Long>join("equipmentIds");
                 predicate = cb.and(predicate, equipment.in(equipmentIds));

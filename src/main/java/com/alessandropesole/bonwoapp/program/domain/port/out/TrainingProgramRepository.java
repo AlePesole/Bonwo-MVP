@@ -13,7 +13,7 @@ public interface TrainingProgramRepository {
     Optional<TrainingProgram> findById(Long id);
 
     Page<TrainingProgram> findByOwner(Long ownerId, Set<Long> equipmentIds, Set<Long> activityIds,
-                                      Set<Long> trainingGoalIds, Pageable pageable);
+                                      Set<Long> trainingGoalIds, String title, Pageable pageable);
 
     void deleteById(Long id);
 }

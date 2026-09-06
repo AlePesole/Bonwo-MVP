@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { routineApi, displayDuration, type RoutineFilter } from "@/routine/api";
@@ -9,14 +9,16 @@ import {
   MuscleGroupFilterRow,
   resolvePrimaryMuscleGroups,
 } from "@/library/MuscleGroupFilterRow";
+import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { cn } from "@/lib/utils";
 import { getErrorMessage } from "@/lib/axios";
 import type { Level, MuscleGroupResponse, RoutineResponse } from "@/types/api";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { ApiError } from "@/components/ApiError";
 import { PageSpinner } from "@/components/Spinner";
-import { ChevronLeft, Clock, Dumbbell, Layers, Pencil, Plus, SlidersHorizontal, Trash2, X } from "lucide-react";
+import { ChevronLeft, Clock, Dumbbell, Layers, Pencil, Plus, Search, SlidersHorizontal, Trash2, X } from "lucide-react";
 
 // ── Level badge ───────────────────────────────────────────────────────────────
 
@@ -164,12 +166,23 @@ function FilterPanel({ filter, onChange }: { filter: RoutineFilter; onChange: (f
 function RoutinesTab() {
   const qc = useQueryClient();
   const [filter, setFilter] = useState<RoutineFilter>({});
+  const [titleDraft, setTitleDraft] = useState("");
+  const debouncedTitle = useDebouncedValue(titleDraft.trim(), 350);
   const [page, setPage] = useState(0);
   const [filterOpen, setFilterOpen] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<RoutineResponse | null>(null);
   const [seedFrom, setSeedFrom] = useState<RoutineResponse | null>(null);
   const [detailRoutine, setDetailRoutine] = useState<RoutineResponse | null>(null);
+
+  useEffect(() => {
+    setFilter((prev) => {
+      const next = debouncedTitle || undefined;
+      if (prev.title === next) return prev;
+      setPage(0);
+      return { ...prev, title: next };
+    });
+  }, [debouncedTitle]);
 
   const {
     data: muscleGroups = [],
@@ -188,38 +201,40 @@ function RoutinesTab() {
     (filter.equipmentIds?.length ?? 0) +
     (filter.activityIds?.length ?? 0) +
     (filter.trainingGoalIds?.length ?? 0);
-  const hasAnyFilter = panelFilters > 0 || muscleIds.length > 0 || subIds.length > 0;
+  const hasAnyFilter = panelFilters > 0 || muscleIds.length > 0 || subIds.length > 0 || !!filter.title;
 
-  // Don't send muscle ids to the API (backend has no muscle filter for routines)
   const { data, isLoading, error } = useQuery({
-    queryKey: ["routines", { equipmentIds: filter.equipmentIds, activityIds: filter.activityIds, trainingGoalIds: filter.trainingGoalIds }, page],
-    queryFn: ({ signal }) => routineApi.list({
-          equipmentIds: filter.equipmentIds,
-          activityIds: filter.activityIds,
-          trainingGoalIds: filter.trainingGoalIds,
-        },
-        page, 12, signal),
+    queryKey: ["routines", filter, page],
+    queryFn: ({ signal }) => routineApi.list(filter, page, 12, signal),
     placeholderData: keepPreviousData,
   });
 
+  // Client-side filter when multi-select exceeds what the backend supports (single id).
+  // Primary-activation-only, matching the backend's own filter semantics.
   const routines = useMemo(() => {
     const list = data?.content ?? [];
-    if (subIds.length > 0) {
+    if (subIds.length > 1) {
       return list.filter((r) =>
         r.slots.some(
           (slot) =>
             slot.exercise != null &&
-            slot.exercise.muscles.some((m) => subIds.includes(m.subGroupId))
+            slot.exercise.muscles.some((m) => m.role === "PRIMARY" && subIds.includes(m.subGroupId))
         )
       );
     }
-    if (muscleIds.length === 0) return list;
-    return list.filter((r) =>
-      muscleIds.some((id) => {
-        const score = r.muscleSummary[String(id)];
-        return score != null && score > 0;
-      })
-    );
+    if (subIds.length === 1) return list; // already filtered by API
+    if (muscleIds.length > 1) {
+      return list.filter((r) =>
+        r.slots.some(
+          (slot) =>
+            slot.exercise != null &&
+            slot.exercise.muscles.some(
+              (m) => m.role === "PRIMARY" && m.subGroup != null && muscleIds.includes(m.subGroup.groupId)
+            )
+        )
+      );
+    }
+    return list;
   }, [data?.content, muscleIds, subIds]);
 
   const deleteMutation = useMutation({
@@ -257,7 +272,17 @@ function RoutinesTab() {
   return (
     <div className="space-y-4">
       {/* Toolbar */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 flex-wrap">
+        <div className="relative flex-1 min-w-[160px] max-w-xs">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <Input
+            value={titleDraft}
+            onChange={(e) => setTitleDraft(e.target.value)}
+            placeholder="Search by title…"
+            aria-label="Search by title"
+            className="h-8 pl-8 text-sm"
+          />
+        </div>
         <Button variant={filterOpen ? "default" : "outline"} size="sm" className="gap-1.5" onClick={() => setFilterOpen((v) => !v)}>
           <SlidersHorizontal className="h-4 w-4" />
           Filters
@@ -268,7 +293,7 @@ function RoutinesTab() {
           )}
         </Button>
         {hasAnyFilter && (
-          <Button variant="ghost" size="sm" className="gap-1 text-muted-foreground" onClick={() => { setFilter({}); setPage(0); }}>
+          <Button variant="ghost" size="sm" className="gap-1 text-muted-foreground" onClick={() => { setFilter({}); setTitleDraft(""); setPage(0); }}>
             <X className="h-3.5 w-3.5" /> Clear
           </Button>
         )}

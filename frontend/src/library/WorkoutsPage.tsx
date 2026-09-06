@@ -282,17 +282,18 @@ function ExercisesTab() {
   });
 
   // Client-side filter when multi-select exceeds what the backend supports (single id).
+  // Primary-activation-only, matching the backend's own filter semantics.
   const exercises = useMemo(() => {
     const list = data?.content ?? [];
     if (subIds.length > 1) {
       return list.filter((ex) =>
-        ex.muscles.some((m) => subIds.includes(m.subGroupId))
+        ex.muscles.some((m) => m.role === "PRIMARY" && subIds.includes(m.subGroupId))
       );
     }
     if (subIds.length === 1) return list; // already filtered by API
     if (muscleIds.length > 1) {
       return list.filter((ex) =>
-        ex.muscles.some((m) => m.subGroup != null && muscleIds.includes(m.subGroup.groupId))
+        ex.muscles.some((m) => m.role === "PRIMARY" && m.subGroup != null && muscleIds.includes(m.subGroup.groupId))
       );
     }
     return list;

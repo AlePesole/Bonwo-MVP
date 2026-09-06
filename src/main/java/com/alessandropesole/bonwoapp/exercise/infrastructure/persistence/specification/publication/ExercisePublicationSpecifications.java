@@ -1,5 +1,6 @@
 package com.alessandropesole.bonwoapp.exercise.infrastructure.persistence.specification.publication;
 
+import com.alessandropesole.bonwoapp.exercise.domain.model.ActivationLevel;
 import com.alessandropesole.bonwoapp.exercise.domain.model.publication.PublicationType;
 import com.alessandropesole.bonwoapp.exercise.domain.model.publication.Visibility;
 import com.alessandropesole.bonwoapp.exercise.infrastructure.persistence.entity.ExerciseJpaEntity;
@@ -61,7 +62,9 @@ public final class ExercisePublicationSpecifications {
 
             if (muscleSubGroupIds != null && !muscleSubGroupIds.isEmpty()) {
                 var muscles = exerciseRoot.<ExerciseJpaEntity, MuscleEntryEmbeddable>join("muscles");
-                predicate = cb.and(predicate, muscles.get("subGroupId").in(muscleSubGroupIds));
+                predicate = cb.and(predicate,
+                        muscles.get("subGroupId").in(muscleSubGroupIds),
+                        cb.greaterThanOrEqualTo(muscles.get("activation"), ActivationLevel.PRIMARY_THRESHOLD));
             }
             if (equipmentIds != null && !equipmentIds.isEmpty()) {
                 var equipment = exerciseRoot.<ExerciseJpaEntity, Long>join("equipmentIds");

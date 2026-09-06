@@ -30,8 +30,8 @@ public class TrainingProgramRepositoryAdapter implements TrainingProgramReposito
 
     @Override
     public Page<TrainingProgram> findByOwner(Long ownerId, Set<Long> equipmentIds, Set<Long> activityIds,
-                                             Set<Long> trainingGoalIds, Pageable pageable) {
-        var spec = TrainingProgramSpecifications.matching(ownerId, equipmentIds, activityIds, trainingGoalIds);
+                                             Set<Long> trainingGoalIds, String title, Pageable pageable) {
+        var spec = TrainingProgramSpecifications.matching(ownerId, equipmentIds, activityIds, trainingGoalIds, title);
         return jpa.findAll(spec, pageable).map(TrainingProgramMapper::toDomain);
     }
 

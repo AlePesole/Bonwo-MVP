@@ -1,5 +1,6 @@
 package com.alessandropesole.bonwoapp.exercise.infrastructure.persistence.specification;
 
+import com.alessandropesole.bonwoapp.exercise.domain.model.ActivationLevel;
 import com.alessandropesole.bonwoapp.exercise.infrastructure.persistence.entity.ExerciseJpaEntity;
 import com.alessandropesole.bonwoapp.exercise.infrastructure.persistence.entity.MuscleEntryEmbeddable;
 import org.springframework.data.jpa.domain.Specification;
@@ -27,7 +28,9 @@ public final class ExerciseSpecifications {
 
             if (muscleSubGroupIds != null && !muscleSubGroupIds.isEmpty()) {
                 var muscles = root.<ExerciseJpaEntity, MuscleEntryEmbeddable>join("muscles");
-                predicate = cb.and(predicate, muscles.get("subGroupId").in(muscleSubGroupIds));
+                predicate = cb.and(predicate,
+                        muscles.get("subGroupId").in(muscleSubGroupIds),
+                        cb.greaterThanOrEqualTo(muscles.get("activation"), ActivationLevel.PRIMARY_THRESHOLD));
             }
             if (equipmentIds != null && !equipmentIds.isEmpty()) {
                 var equipment = root.<ExerciseJpaEntity, Long>join("equipmentIds");
