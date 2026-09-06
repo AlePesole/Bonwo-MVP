@@ -1,9 +1,12 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import axios from "axios";
 import { catalogApi } from "@/catalog/api";
 import { BODY_DIAGRAMS } from "@/catalog/bodyDiagram";
 import { displayDuration, routineApi, type RoutinePayload } from "./api";
 import { programApi } from "@/program/api";
+import { sessionApi } from "@/session/api";
 import { cn } from "@/lib/utils";
 import { getErrorMessage } from "@/lib/axios";
 import type {
@@ -41,6 +44,7 @@ import {
   Eye,
   MoreVertical,
   Pencil,
+  Play,
   Trash2,
   FolderPlus,
 } from "lucide-react";
@@ -561,9 +565,11 @@ export function RoutineDetailDialog({
   onDuplicate?: () => void;
 }) {
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const [viewExercise, setViewExercise] = useState<ExerciseResponseType | null>(null);
   const [addToProgramOpen, setAddToProgramOpen] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [activeSessionId, setActiveSessionId] = useState<number | null>(null);
   const [copiedOk, setCopiedOk] = useState(false);
   const { data: muscleGroups = [] } = useQuery({
     queryKey: ["catalog", "muscles"],
@@ -588,6 +594,31 @@ export function RoutineDetailDialog({
     },
   });
 
+  const startSession = useMutation({
+    mutationFn: (routineId: number) => sessionApi.start(routineId),
+    onSuccess: (session) => {
+      setActionError(null);
+      setActiveSessionId(null);
+      qc.invalidateQueries({ queryKey: ["training-sessions"] });
+      onClose();
+      navigate(`/training-sessions/${session.id}`);
+    },
+    onError: async (err) => {
+      setActionError(getErrorMessage(err));
+      if (axios.isAxiosError(err) && err.response?.status === 422) {
+        try {
+          const page = await sessionApi.listMine(0, 20);
+          const active = page.content.find((s) => s.status === "IN_PROGRESS");
+          setActiveSessionId(active?.id ?? null);
+        } catch {
+          setActiveSessionId(null);
+        }
+      } else {
+        setActiveSessionId(null);
+      }
+    },
+  });
+
   if (!routine) return null;
 
   const totalSets = routine.slots.reduce((acc, s) => acc + s.sets.length, 0);
@@ -600,6 +631,7 @@ export function RoutineDetailDialog({
           if (!v) {
             setAddToProgramOpen(false);
             setActionError(null);
+            setActiveSessionId(null);
             setCopiedOk(false);
             onClose();
           }
@@ -615,6 +647,18 @@ export function RoutineDetailDialog({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56 z-[60]">
+              <DropdownMenuItem
+                disabled={startSession.isPending}
+                onClick={() => {
+                  setAddToProgramOpen(false);
+                  setActionError(null);
+                  setActiveSessionId(null);
+                  startSession.mutate(routine.id);
+                }}
+              >
+                <Play className="h-4 w-4 mr-2" />
+                {startSession.isPending ? "Starting…" : "Start routine"}
+              </DropdownMenuItem>
               {onEdit && (
                 <DropdownMenuItem
                   onClick={() => {
@@ -666,8 +710,22 @@ export function RoutineDetailDialog({
         </div>
 
         {actionError && (
-          <div className="px-6 pt-2">
+          <div className="px-6 pt-2 space-y-2">
             <ApiError message={actionError} />
+            {activeSessionId != null && (
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                className="w-full gap-2"
+                onClick={() => {
+                  onClose();
+                  navigate(`/training-sessions/${activeSessionId}`);
+                }}
+              >
+                <Play className="h-4 w-4" /> Go to session in progress
+              </Button>
+            )}
           </div>
         )}
         {copiedOk && (
@@ -695,6 +753,26 @@ export function RoutineDetailDialog({
           <span className={cn("inline-flex items-center self-center px-3 py-1 rounded-full text-xs font-semibold border mt-2", LEVEL_COLOR[routine.level])}>
             {LEVEL_LABEL[routine.level]}
           </span>
+          <div className="pt-3 self-stretch flex justify-end">
+            <Button
+              type="button"
+              size="sm"
+              className="gap-1.5"
+              disabled={startSession.isPending}
+              onClick={() => {
+                setActionError(null);
+                setActiveSessionId(null);
+                startSession.mutate(routine.id);
+              }}
+            >
+              {startSession.isPending ? (
+                <Spinner size="sm" label="" />
+              ) : (
+                <Play className="h-3.5 w-3.5" />
+              )}
+              Start routine
+            </Button>
+          </div>
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto px-6 pb-6">

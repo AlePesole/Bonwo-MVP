@@ -17,6 +17,7 @@ import {
   LogOut,
   PlusCircle,
   Search,
+  Timer,
   User,
   Users,
 } from "lucide-react";
@@ -72,6 +73,11 @@ export function Layout() {
             {isAuthenticated && (
               <NavItem to="/library" icon={<Library className="h-4 w-4" />}>
                 Library
+              </NavItem>
+            )}
+            {isAuthenticated && (
+              <NavItem to="/sessions" icon={<Timer className="h-4 w-4" />}>
+                Sessions
               </NavItem>
             )}
             {isAuthenticated && (
@@ -171,6 +177,9 @@ export function Layout() {
         <div className="md:hidden border-b border-border/60 px-4 py-2 flex gap-4 overflow-x-auto bg-background/95">
           <NavItem to="/library" icon={<Library className="h-4 w-4" />}>
             Library
+          </NavItem>
+          <NavItem to="/sessions" icon={<Timer className="h-4 w-4" />}>
+            Sessions
           </NavItem>
           <NavItem to="/explore" icon={<Search className="h-4 w-4" />}>
             Explore

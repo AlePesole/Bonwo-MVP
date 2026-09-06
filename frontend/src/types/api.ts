@@ -206,6 +206,60 @@ export interface RoutineResponse {
   position: number | null;
 }
 
+// ── Training session ──────────────────────────────────────────────────────────
+
+export type SessionStatus = "IN_PROGRESS" | "COMPLETED";
+
+export interface TrainingSetDto {
+  type: SetType;
+  reps?: number;
+  weightKg?: number | null;
+  weightMode?: WeightMode;
+  duration?: string | null;
+  done: boolean;
+}
+
+export interface TrainingSetResponse {
+  type: SetType;
+  reps: number;
+  weightKg: number | null;
+  weightMode: WeightMode | null;
+  totalWeightKg: number | null;
+  duration: string | null;
+  done: boolean;
+}
+
+export interface TrainingSlotDto {
+  exerciseId: number;
+  position: number;
+  sets: TrainingSetDto[];
+  restBetweenSets?: string | null;
+}
+
+export interface TrainingSlotResponse {
+  exerciseId: number;
+  exercise: ExerciseResponse | null;
+  position: number;
+  sets: TrainingSetResponse[];
+  restBetweenSets: string | null;
+  done: boolean;
+}
+
+export interface TrainingSessionResponse {
+  id: number;
+  ownerId: number;
+  routineId: number | null;
+  routineTitle: string;
+  trainingProgramId: number | null;
+  status: SessionStatus;
+  startedAt: string;
+  completedAt: string | null;
+  duration: string | null;
+  finalNote: string | null;
+  slots: TrainingSlotResponse[];
+  muscleSummary: Record<string, number>;
+}
+
 // ── Program ───────────────────────────────────────────────────────────────────
 
 export interface ProgramRoutineDto {
