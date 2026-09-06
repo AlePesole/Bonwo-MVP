@@ -40,6 +40,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -213,8 +214,13 @@ public class RoutineService implements RoutineUseCase {
                 .map(t -> TrainingGoalDtoMapper.toResponse(t, mediaResolver.resolveImage(t.getIconId())))
                 .toList();
 
+        Set<Long> exerciseIds = r.getSlots().stream()
+                .map(ExerciseSlot::getExerciseId)
+                .collect(Collectors.toSet());
+        Map<Long, ExerciseResponse> exercises = exerciseUseCase.getVisibleByIds(exerciseIds, ownerId);
+
         List<ExerciseSlotResponse> slots = r.getSlots().stream()
-                .map(slot -> ExerciseSlotDtoMapper.toResponse(slot, resolveExercise(slot.getExerciseId(), ownerId)))
+                .map(slot -> ExerciseSlotDtoMapper.toResponse(slot, exercises.get(slot.getExerciseId())))
                 .toList();
 
         return RoutineDtoMapper.toResponse(
@@ -222,12 +228,5 @@ public class RoutineService implements RoutineUseCase {
                 mediaResolver.resolveImage(r.getThumbnailId()),
                 slots
         );
-    }
-
-    private ExerciseResponse resolveExercise(Long exerciseId, Long ownerId) {
-        return exerciseRepository.findById(exerciseId)
-                .filter(e -> exerciseVisibilityResolver.isVisible(e, ownerId))
-                .map(e -> exerciseUseCase.getById(exerciseId, ownerId))
-                .orElse(null);
     }
 }

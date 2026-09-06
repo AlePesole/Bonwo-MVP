@@ -2,13 +2,17 @@ package com.alessandropesole.bonwoapp.exercise.application.service;
 
 import com.alessandropesole.bonwoapp.catalog.application.dto.ActivityResponse;
 import com.alessandropesole.bonwoapp.catalog.application.dto.EquipmentResponse;
+import com.alessandropesole.bonwoapp.catalog.application.dto.MuscleSubGroupResponse;
 import com.alessandropesole.bonwoapp.catalog.application.dto.TrainingGoalResponse;
 import com.alessandropesole.bonwoapp.catalog.application.mapper.ActivityDtoMapper;
 import com.alessandropesole.bonwoapp.catalog.application.mapper.EquipmentDtoMapper;
 import com.alessandropesole.bonwoapp.catalog.application.mapper.MuscleSubGroupDtoMapper;
 import com.alessandropesole.bonwoapp.catalog.application.mapper.TrainingGoalDtoMapper;
 import com.alessandropesole.bonwoapp.catalog.application.service.CatalogValidator;
+import com.alessandropesole.bonwoapp.catalog.domain.model.Activity;
+import com.alessandropesole.bonwoapp.catalog.domain.model.Equipment;
 import com.alessandropesole.bonwoapp.catalog.domain.model.MuscleSubGroup;
+import com.alessandropesole.bonwoapp.catalog.domain.model.TrainingGoal;
 import com.alessandropesole.bonwoapp.catalog.domain.port.out.ActivityRepository;
 import com.alessandropesole.bonwoapp.catalog.domain.port.out.EquipmentRepository;
 import com.alessandropesole.bonwoapp.catalog.domain.port.out.MuscleSubGroupRepository;
@@ -26,6 +30,8 @@ import com.alessandropesole.bonwoapp.exercise.domain.model.MuscleEntry;
 import com.alessandropesole.bonwoapp.exercise.domain.model.MuscleSummary;
 import com.alessandropesole.bonwoapp.exercise.domain.port.in.ExerciseUseCase;
 import com.alessandropesole.bonwoapp.exercise.domain.port.out.ExerciseRepository;
+import com.alessandropesole.bonwoapp.media.application.dto.ImageResponse;
+import com.alessandropesole.bonwoapp.media.application.dto.VideoResponse;
 import com.alessandropesole.bonwoapp.media.application.service.MediaResolver;
 import com.alessandropesole.bonwoapp.media.application.service.MediaService;
 import com.alessandropesole.bonwoapp.shared.infrastructure.exception.ForbiddenOperationException;
@@ -37,6 +43,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -82,6 +90,23 @@ public class ExerciseService implements ExerciseUseCase {
     @Transactional(readOnly = true)
     public ExerciseResponse getById(Long id, Long ownerId) {
         return toResponse(findVisible(id, ownerId));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<Long, ExerciseResponse> getVisibleByIds(Set<Long> ids, Long viewerId) {
+        if (ids == null || ids.isEmpty()) return Map.of();
+
+        List<Exercise> found = exerciseRepository.findAllById(ids);
+        if (found.isEmpty()) return Map.of();
+
+        Map<Long, Boolean> visibility = exerciseVisibilityResolver.isVisibleBulk(found, viewerId);
+        List<Exercise> visible = found.stream()
+                .filter(e -> Boolean.TRUE.equals(visibility.get(e.getId())))
+                .toList();
+
+        return toResponseBulk(visible).stream()
+                .collect(Collectors.toMap(ExerciseResponse::id, r -> r));
     }
 
     @Override
@@ -176,46 +201,65 @@ public class ExerciseService implements ExerciseUseCase {
     }
 
     private ExerciseResponse toResponse(Exercise e) {
-        List<EquipmentResponse> equipment = e.getEquipmentIds().isEmpty() ? List.of()
-                : equipmentRepository.findAllById(e.getEquipmentIds()).stream()
-                .map(eq -> EquipmentDtoMapper.toResponse(eq,
-                        mediaResolver.resolveImage(eq.getIconId())))
-                .toList();
-
-        List<ActivityResponse> activities = e.getActivityIds().isEmpty() ? List.of()
-                : activityRepository.findAllById(e.getActivityIds()).stream()
-                .map(a -> ActivityDtoMapper.toResponse(a,
-                        mediaResolver.resolveImage(a.getIconId())))
-                .toList();
-
-        List<TrainingGoalResponse> trainingGoals = e.getTrainingGoalIds().isEmpty() ? List.of()
-                : trainingGoalRepository.findAllById(e.getTrainingGoalIds()).stream()
-                .map(t -> TrainingGoalDtoMapper.toResponse(t,
-                        mediaResolver.resolveImage(t.getIconId())))
-                .toList();
-
-        List<MuscleEntryResponse> muscles = resolveMuscleEntries(e.getMuscles());
-
-        return ExerciseDtoMapper.toResponse(
-                e, equipment, activities, trainingGoals,
-                mediaResolver.resolveImage(e.getThumbnailId()),
-                mediaResolver.resolveVideo(e.getMainVideoId()),
-                muscles
-        );
+        return toResponseBulk(List.of(e)).get(0);
     }
 
+    /** Batch-resolves equipment/activity/trainingGoal/muscle-subgroup/media for any number of
+     *  exercises in ~6 queries total, instead of ~6 queries PER exercise — this is what fixes the
+     *  N+1 that routine and training-session responses used to trigger per slot. */
+    private List<ExerciseResponse> toResponseBulk(List<Exercise> exercises) {
+        if (exercises.isEmpty()) return List.of();
 
-    private List<MuscleEntryResponse> resolveMuscleEntries(List<MuscleEntry> entries) {
-        if (entries == null || entries.isEmpty()) return List.of();
-        var subGroupIds = entries.stream().map(MuscleEntry::getSubGroupId).toList();
-        var subGroupMap = muscleSubGroupRepository.findAllById(subGroupIds).stream()
-                .collect(Collectors.toMap(
-                        s -> s.getId(),
-                        s -> MuscleSubGroupDtoMapper.toResponse(s,
-                                mediaResolver.resolveImage(s.getIconId()))
-                ));
-        return entries.stream()
-                .map(m -> MuscleEntryDtoMapper.toResponse(m, subGroupMap.get(m.getSubGroupId())))
-                .toList();
+        Set<Long> equipmentIds = exercises.stream().flatMap(e -> e.getEquipmentIds().stream()).collect(Collectors.toSet());
+        Set<Long> activityIds = exercises.stream().flatMap(e -> e.getActivityIds().stream()).collect(Collectors.toSet());
+        Set<Long> trainingGoalIds = exercises.stream().flatMap(e -> e.getTrainingGoalIds().stream()).collect(Collectors.toSet());
+        Set<Long> subGroupIds = exercises.stream()
+                .flatMap(e -> e.getMuscles().stream())
+                .map(MuscleEntry::getSubGroupId)
+                .collect(Collectors.toSet());
+        Set<Long> thumbnailIds = exercises.stream().map(Exercise::getThumbnailId).collect(Collectors.toSet());
+        Set<Long> videoIds = exercises.stream().map(Exercise::getMainVideoId).collect(Collectors.toSet());
+
+        Map<Long, EquipmentResponse> equipmentMap = equipmentIds.isEmpty() ? Map.of()
+                : equipmentRepository.findAllById(equipmentIds).stream()
+                    .collect(Collectors.toMap(Equipment::getId,
+                            eq -> EquipmentDtoMapper.toResponse(eq, mediaResolver.resolveImage(eq.getIconId()))));
+
+        Map<Long, ActivityResponse> activityMap = activityIds.isEmpty() ? Map.of()
+                : activityRepository.findAllById(activityIds).stream()
+                    .collect(Collectors.toMap(Activity::getId,
+                            a -> ActivityDtoMapper.toResponse(a, mediaResolver.resolveImage(a.getIconId()))));
+
+        Map<Long, TrainingGoalResponse> trainingGoalMap = trainingGoalIds.isEmpty() ? Map.of()
+                : trainingGoalRepository.findAllById(trainingGoalIds).stream()
+                    .collect(Collectors.toMap(TrainingGoal::getId,
+                            t -> TrainingGoalDtoMapper.toResponse(t, mediaResolver.resolveImage(t.getIconId()))));
+
+        Map<Long, MuscleSubGroupResponse> subGroupMap = subGroupIds.isEmpty() ? Map.of()
+                : muscleSubGroupRepository.findAllById(subGroupIds).stream()
+                    .collect(Collectors.toMap(MuscleSubGroup::getId,
+                            sg -> MuscleSubGroupDtoMapper.toResponse(sg, mediaResolver.resolveImage(sg.getIconId()))));
+
+        Map<Long, ImageResponse> thumbnailMap = mediaResolver.resolveImages(thumbnailIds);
+        Map<Long, VideoResponse> videoMap = mediaResolver.resolveVideos(videoIds);
+
+        return exercises.stream().map(e -> {
+            List<EquipmentResponse> equipment = e.getEquipmentIds().stream()
+                    .map(equipmentMap::get).filter(Objects::nonNull).toList();
+            List<ActivityResponse> activities = e.getActivityIds().stream()
+                    .map(activityMap::get).filter(Objects::nonNull).toList();
+            List<TrainingGoalResponse> trainingGoals = e.getTrainingGoalIds().stream()
+                    .map(trainingGoalMap::get).filter(Objects::nonNull).toList();
+            List<MuscleEntryResponse> muscles = e.getMuscles().stream()
+                    .map(m -> MuscleEntryDtoMapper.toResponse(m, subGroupMap.get(m.getSubGroupId())))
+                    .toList();
+
+            return ExerciseDtoMapper.toResponse(
+                    e, equipment, activities, trainingGoals,
+                    thumbnailMap.get(e.getThumbnailId()),
+                    videoMap.get(e.getMainVideoId()),
+                    muscles
+            );
+        }).toList();
     }
 }

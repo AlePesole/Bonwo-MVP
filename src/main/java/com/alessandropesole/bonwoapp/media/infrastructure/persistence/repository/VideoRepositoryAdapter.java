@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -23,6 +24,11 @@ public class VideoRepositoryAdapter implements VideoRepository {
     @Override
     public Optional<Video> findById(Long id) {
         return jpa.findById(id).map(MediaPersistenceMapper::toDomain);
+    }
+
+    @Override
+    public List<Video> findAllById(Collection<Long> ids) {
+        return jpa.findAllById(ids).stream().map(MediaPersistenceMapper::toDomain).toList();
     }
 
     @Override

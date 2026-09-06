@@ -5,6 +5,7 @@ import com.alessandropesole.bonwoapp.exercise.domain.model.publication.Publicati
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
@@ -12,6 +13,8 @@ public interface ExercisePublicationRepository {
     ExercisePublication save(ExercisePublication publication);
 
     Optional<ExercisePublication> findById(Long id);
+
+    List<ExercisePublication> findAllById(Set<Long> ids);
 
     Optional<ExercisePublication> findByExerciseId(Long exerciseId);
 

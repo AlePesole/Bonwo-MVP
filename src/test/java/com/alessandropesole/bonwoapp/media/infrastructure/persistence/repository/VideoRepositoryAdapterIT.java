@@ -10,6 +10,7 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.context.annotation.Import;
 
 import java.time.Instant;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -66,6 +67,17 @@ class VideoRepositoryAdapterIT extends AbstractIntegrationTest {
 
         assertThat(result).hasSize(1);
         assertThat(result.get(0).getId()).isEqualTo(savedExpiredPending.getId());
+    }
+
+    @Test
+    void findAllById_returnsOnlyMatchingVideos() {
+        Video saved1 = videoRepository.save(Video.createPending(1L, "ext-1", "url", "thumb", 30, 15L));
+        videoRepository.save(Video.createPending(1L, "ext-2", "url", "thumb", 30, 15L));
+        Video saved3 = videoRepository.save(Video.createPending(1L, "ext-3", "url", "thumb", 30, 15L));
+
+        var result = videoRepository.findAllById(Set.of(saved1.getId(), saved3.getId()));
+
+        assertThat(result).extracting(Video::getExternalId).containsExactlyInAnyOrder("ext-1", "ext-3");
     }
 
     @Test

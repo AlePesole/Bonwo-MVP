@@ -9,6 +9,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
@@ -26,6 +27,11 @@ public class ExerciseRepositoryAdapter implements ExerciseRepository {
     @Override
     public Optional<Exercise> findById(Long id) {
         return jpa.findById(id).map(ExerciseMapper::toDomain);
+    }
+
+    @Override
+    public List<Exercise> findAllById(Set<Long> ids) {
+        return jpa.findAllById(ids).stream().map(ExerciseMapper::toDomain).toList();
     }
 
     @Override

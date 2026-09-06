@@ -13,10 +13,15 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -72,5 +77,54 @@ class ExerciseVisibilityResolverTest {
         when(publicationRepository.findById(PUBLICATION_ID)).thenReturn(Optional.empty());
 
         assertThat(visibilityResolver.isVisible(exercise, OTHER_USER_ID)).isFalse();
+    }
+
+    @Test
+    void isVisibleBulk_trueForOwnedExerciseWithoutPublicationLookup() {
+        Exercise exercise = privateExercise();
+
+        Map<Long, Boolean> result = visibilityResolver.isVisibleBulk(List.of(exercise), OWNER_ID);
+
+        assertThat(result).containsEntry(exercise.getId(), true);
+        verify(publicationRepository, never()).findAllById(any());
+    }
+
+    @Test
+    void isVisibleBulk_falseForNonOwnedExerciseWithoutPublication() {
+        Exercise exercise = privateExercise();
+
+        Map<Long, Boolean> result = visibilityResolver.isVisibleBulk(List.of(exercise), OTHER_USER_ID);
+
+        assertThat(result).containsEntry(exercise.getId(), false);
+        verify(publicationRepository, never()).findAllById(any());
+    }
+
+    @Test
+    void isVisibleBulk_trueForNonOwnedExerciseWithVisiblePublication() {
+        Exercise exercise = publishedExercise();
+        ExercisePublication publication = ExercisePublication.reconstitute(
+                PUBLICATION_ID, exercise.getId(), OWNER_ID, PublicationType.COMMUNITY, Visibility.PUBLIC,
+                0, 0, 0, 0, null);
+        when(publicationRepository.findAllById(Set.of(PUBLICATION_ID))).thenReturn(List.of(publication));
+
+        Map<Long, Boolean> result = visibilityResolver.isVisibleBulk(List.of(exercise), OTHER_USER_ID);
+
+        assertThat(result).containsEntry(exercise.getId(), true);
+    }
+
+    @Test
+    void isVisibleBulk_batchesPublicationLookupAcrossSharedPublicationId() {
+        Exercise a = Exercise.reconstitute(1L, OWNER_ID, "Bench Press", Level.INTERMEDIATE,
+                null, null, null, null, List.of(), null, Set.of(), Set.of(), Set.of(), null, PUBLICATION_ID);
+        Exercise b = Exercise.reconstitute(2L, OWNER_ID, "Incline Bench Press", Level.INTERMEDIATE,
+                null, null, null, null, List.of(), null, Set.of(), Set.of(), Set.of(), null, PUBLICATION_ID);
+        ExercisePublication publication = ExercisePublication.reconstitute(
+                PUBLICATION_ID, a.getId(), OWNER_ID, PublicationType.COMMUNITY, Visibility.PUBLIC,
+                0, 0, 0, 0, null);
+        when(publicationRepository.findAllById(Set.of(PUBLICATION_ID))).thenReturn(List.of(publication));
+
+        visibilityResolver.isVisibleBulk(List.of(a, b), OTHER_USER_ID);
+
+        verify(publicationRepository, times(1)).findAllById(any());
     }
 }

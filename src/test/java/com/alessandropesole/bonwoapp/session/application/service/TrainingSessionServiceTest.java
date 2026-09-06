@@ -95,6 +95,8 @@ class TrainingSessionServiceTest {
         when(exerciseRepository.findById(EXERCISE_ID)).thenReturn(Optional.of(exercise));
         when(exerciseVisibilityResolver.isVisible(exercise, OWNER_ID)).thenReturn(true);
         when(exerciseUseCase.getById(EXERCISE_ID, OWNER_ID)).thenReturn(exerciseResponse(Map.of(1L, 0.8)));
+        when(exerciseUseCase.getVisibleByIds(Set.of(EXERCISE_ID), OWNER_ID))
+                .thenReturn(Map.of(EXERCISE_ID, exerciseResponse(Map.of(1L, 0.8))));
         when(muscleSummaryCalculator.aggregate(anyList())).thenReturn(MuscleSummary.of(Map.of(1L, 0.8)));
         when(trainingSessionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -148,6 +150,8 @@ class TrainingSessionServiceTest {
         when(exerciseRepository.findById(EXERCISE_ID)).thenReturn(Optional.of(exercise));
         when(exerciseVisibilityResolver.isVisible(exercise, OWNER_ID)).thenReturn(true);
         when(exerciseUseCase.getById(EXERCISE_ID, OWNER_ID)).thenReturn(exerciseResponse(Map.of(1L, 0.5)));
+        when(exerciseUseCase.getVisibleByIds(Set.of(EXERCISE_ID), OWNER_ID))
+                .thenReturn(Map.of(EXERCISE_ID, exerciseResponse(Map.of(1L, 0.5))));
         when(muscleSummaryCalculator.aggregate(anyList())).thenReturn(MuscleSummary.of(Map.of(1L, 0.5)));
         when(trainingSessionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -179,10 +183,8 @@ class TrainingSessionServiceTest {
         TrainingSession session = inProgressSession();
         when(trainingSessionRepository.findById(SESSION_ID)).thenReturn(Optional.of(session));
         when(trainingSessionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-        Exercise exercise = ownedExercise();
-        when(exerciseRepository.findById(EXERCISE_ID)).thenReturn(Optional.of(exercise));
-        when(exerciseVisibilityResolver.isVisible(exercise, OWNER_ID)).thenReturn(true);
-        when(exerciseUseCase.getById(EXERCISE_ID, OWNER_ID)).thenReturn(exerciseResponse(Map.of()));
+        when(exerciseUseCase.getVisibleByIds(Set.of(EXERCISE_ID), OWNER_ID))
+                .thenReturn(Map.of(EXERCISE_ID, exerciseResponse(Map.of())));
 
         TrainingSessionResponse response = trainingSessionService.complete(
                 SESSION_ID, new CompleteTrainingSessionRequest("great session"), OWNER_ID);
