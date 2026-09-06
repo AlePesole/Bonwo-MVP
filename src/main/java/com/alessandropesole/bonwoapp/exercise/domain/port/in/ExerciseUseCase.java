@@ -15,9 +15,6 @@ public interface ExerciseUseCase {
 
     ExerciseResponse getById(Long id, Long ownerId);
 
-    /** Batched version of {@link #getById} for resolving many exercises (e.g. a routine's or
-     *  training session's slots) in one pass. Ids that don't exist or aren't visible to the
-     *  viewer are simply absent from the result map — never throws. */
     Map<Long, ExerciseResponse> getVisibleByIds(Set<Long> ids, Long viewerId);
 
     ExerciseResponse update(Long id, UpdateExerciseRequest request, Long ownerId);

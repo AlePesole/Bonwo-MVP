@@ -21,10 +21,6 @@ public class Video extends AggregateRoot {
     private Instant expiresAt;
     private Instant createdAt;
 
-    /**
-     * Creates a PENDING video just uploaded to the provider.
-     * Generates an uploadToken the entity creation request must include.
-     */
     public static Video createPending(Long ownerId, String externalId,
                                        String url, String thumbnailUrl,
                                        Integer durationSeconds, Long ttlMinutes) {
@@ -64,10 +60,6 @@ public class Video extends AggregateRoot {
         return v;
     }
 
-    /**
-     * Claims this video for an entity.
-     * Clears the uploadToken and expiresAt — video is now ACTIVE.
-     */
     public void activate() {
         this.status      = VideoStatus.ACTIVE;
         this.uploadToken = null;

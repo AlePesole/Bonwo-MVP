@@ -10,12 +10,6 @@ import java.time.Instant;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
-/**
- * A weekly training program. Its routines are not held here — they are real, independently-addressable
- * Routine rows (see Routine.trainingProgramId/position), owned by this aggregate via that foreign key.
- * TrainingProgramService fetches them via RoutineRepository.findByTrainingProgramId(id) rather than
- * this class caching a list of them.
- */
 @Getter
 public class TrainingProgram extends AggregateRoot {
 

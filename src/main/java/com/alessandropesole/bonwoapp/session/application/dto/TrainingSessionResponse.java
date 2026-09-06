@@ -10,8 +10,8 @@ import java.util.Map;
 public record TrainingSessionResponse(
         Long id,
         Long ownerId,
-        Long routineId,        // null if the source routine was later deleted
-        String routineTitle,   // snapshot taken at start time, survives routine edits/deletion
+        Long routineId,
+        String routineTitle,
         Long trainingProgramId,
         SessionStatus status,
         Instant startedAt,

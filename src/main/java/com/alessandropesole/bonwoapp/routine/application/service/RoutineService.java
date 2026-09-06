@@ -166,12 +166,6 @@ public class RoutineService implements RoutineUseCase {
         return Set.of();
     }
 
-    /**
-     * A fresh upload always wins. Otherwise, an explicit thumbnailId is used as-is after verifying
-     * ownership — this is how duplicating a routine can point at the source's existing image without
-     * re-uploading it (safe since removing a thumbnail only clears the reference, never deletes the
-     * underlying image — see RoutineService.update/delete).
-     */
     private Long resolveNewThumbnailId(String thumbnailUploadToken, Long thumbnailId, Long ownerId) {
         if (thumbnailUploadToken != null) return mediaService.claimImage(thumbnailUploadToken, ownerId);
         if (thumbnailId != null) {
@@ -185,10 +179,6 @@ public class RoutineService implements RoutineUseCase {
         return slots.stream().map(ExerciseSlot::getExerciseId).collect(Collectors.toSet());
     }
 
-    /**
-     * A routine can only reference exercises the caller owns, or exercises published and visible
-     * to anyone — never another user's private exercise.
-     */
     private void validateSlotExercisesAreAccessible(List<ExerciseSlot> slots, Long ownerId) {
         for (ExerciseSlot slot : slots) {
             Exercise exercise = exerciseRepository.findById(slot.getExerciseId())

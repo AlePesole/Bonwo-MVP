@@ -18,12 +18,6 @@ public final class ExercisePublicationSpecifications {
     private ExercisePublicationSpecifications() {
     }
 
-    /**
-     * exercise_publications.exercise_id has no mapped JPA association to exercises (same convention
-     * as the rest of the app — aggregates only reference each other via plain FK columns), so catalog
-     * filters need a second, manually-correlated root instead of Root.join(...). Same reasoning for
-     * likedByUserId/savedByUserId against the like/save join tables.
-     */
     public static Specification<ExercisePublicationJpaEntity> matching(Long authorId, boolean onlyPublicVisibility,
                                                                         PublicationType type,
                                                                         Set<Long> muscleSubGroupIds, Set<Long> equipmentIds,

@@ -14,16 +14,12 @@ public interface ExercisePublicationUseCase {
 
     ExercisePublicationResponse getById(Long id, Long viewerId);
 
-    /** Public feed — any author, PUBLIC visibility only, optionally filtered by type. */
     Page<ExercisePublicationResponse> listFeed(ExercisePublicationFilter filter, Long viewerId, Pageable pageable);
 
-    /** The caller's own publications, regardless of visibility. */
     Page<ExercisePublicationResponse> listMine(Long authorId, ExercisePublicationFilter filter, Pageable pageable);
 
-    /** Publications the caller has liked. */
     Page<ExercisePublicationResponse> listLiked(Long userId, ExercisePublicationFilter filter, Pageable pageable);
 
-    /** Publications the caller has saved. */
     Page<ExercisePublicationResponse> listSaved(Long userId, ExercisePublicationFilter filter, Pageable pageable);
 
     ExercisePublicationResponse update(Long id, UpdatePublicationRequest request, Long authorId);
@@ -38,6 +34,5 @@ public interface ExercisePublicationUseCase {
 
     ExercisePublicationResponse unsave(Long id, Long userId);
 
-    /** Internal-only — called by RoutineService whenever a routine references publications' exercises. */
     void registerUses(Long routineOwnerId, Long routineId, Set<Long> exerciseIds);
 }

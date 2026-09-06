@@ -76,7 +76,6 @@ public class MuscleGroupController {
         return ResponseEntity.noContent().build();
     }
 
-// MuscleSubGroup
 
     @Operation(
             summary = "Create a muscle sub-group",

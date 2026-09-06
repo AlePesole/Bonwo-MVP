@@ -54,13 +54,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-/**
- * Creating a publication also creates its Exercise, in one step — there's no "publish an existing
- * exercise" flow (see plan). Deliberately bypasses ExerciseUseCase/ExerciseService: that path is
- * blocked for exercises already belonging to a publication, so routing through it here would
- * self-block. Instead this reuses the same lower-level pieces ExerciseService uses internally
- * (Exercise domain, ExerciseRepository, MuscleSummaryCalculator, CatalogValidator, static mappers).
- */
 @Service
 @RequiredArgsConstructor
 @Transactional

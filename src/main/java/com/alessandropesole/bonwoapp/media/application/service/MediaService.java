@@ -20,20 +20,6 @@ import java.io.IOException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 
-/**
- * Handles video and image upload/delete.
- *
- * Upload flow:
- *   1. File is sent to MediaStorage → PENDING Video/Image created with uploadToken
- *   2. Entity creation request includes the uploadToken
- *   3. claimVideo(token, ownerId) / claimImage(token, ownerId) activates the media
- *      and returns the id to store in the entity
- *
- * Delete flow:
- *   Called by entity services (ExerciseService, RoutineService, etc.)
- *   when an entity is deleted or its media is replaced.
- *   Only deletes if the requesting user is the owner of the media.
- */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -86,11 +72,6 @@ public class MediaService {
         }
     }
 
-    /**
-     * Activates a PENDING video by its uploadToken.
-     * Returns the video id to store in the entity.
-     * Only the owner can claim their own upload.
-     */
     public Long claimVideo(String uploadToken, Long ownerId) {
         Video video = videoRepository.findByUploadToken(uploadToken)
                 .orElseThrow(() -> new ResourceNotFoundException(
@@ -106,10 +87,6 @@ public class MediaService {
         return videoRepository.save(video).getId();
     }
 
-    /**
-     * Activates a PENDING image by its uploadToken.
-     * Returns the image id to store in the entity.
-     */
     public Long claimImage(String uploadToken, Long ownerId) {
         Image image = imageRepository.findByUploadToken(uploadToken)
                 .orElseThrow(() -> new ResourceNotFoundException(
@@ -125,22 +102,12 @@ public class MediaService {
         return imageRepository.save(image).getId();
     }
 
-    /**
-     * Verifies an already-active image belongs to ownerId — used when a request references an existing
-     * image by id directly (e.g. duplicating another owned entity's thumbnail) rather than uploading a
-     * new one. Unlike claimImage, this doesn't activate/mutate anything, just asserts ownership.
-     */
     public void verifyImageOwnership(Long imageId, Long ownerId) {
         Image image = imageRepository.findById(imageId)
                 .orElseThrow(() -> new ResourceNotFoundException("Image", imageId));
         if (!image.isOwnedBy(ownerId)) throw new MediaNotOwnedException();
     }
 
-    /**
-     * Deletes a video from MediaStorage and BD.
-     * Only deletes if ownerId matches — silently skips if not owner or not found.
-     * Called when an entity is deleted or its mainVideoId is replaced.
-     */
     public void deleteVideoIfOwner(Long videoId, Long ownerId) {
         if (videoId == null) return;
         videoRepository.findById(videoId).ifPresent(v -> {
@@ -152,10 +119,6 @@ public class MediaService {
         });
     }
 
-    /**
-     * Deletes an image from MediaStorage and BD.
-     * Only deletes if ownerId matches — silently skips if not owner or not found.
-     */
     public void deleteImageIfOwner(Long imageId, Long ownerId) {
         if (imageId == null) return;
         imageRepository.findById(imageId).ifPresent(i -> {
@@ -179,9 +142,6 @@ public class MediaService {
         return expired.size();
     }
 
-    /**
-     * Deletes ACTIVE images no longer referenced by any Exercise/Routine/TrainingProgram thumbnail
-     */
     public int deleteOrphanedImages() {
         var threshold = Instant.now().minus(mediaProperties.orphanGraceHours(), ChronoUnit.HOURS);
         var orphaned = imageRepository.findAllOrphaned(threshold);
@@ -207,10 +167,6 @@ public class MediaService {
         imageRepository.deleteById(i.getId());
     }
 
-    /**
-     * Deletes an image unconditionally — no owner check.
-     * Use only from admin operations where authorization is already enforced.
-     */
     public void deleteImage(Long imageId) {
         if (imageId == null) return;
         imageRepository.findById(imageId).ifPresent(this::deleteImageInternal);

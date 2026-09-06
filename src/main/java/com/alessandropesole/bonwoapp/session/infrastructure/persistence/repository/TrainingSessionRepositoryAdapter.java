@@ -21,9 +21,6 @@ public class TrainingSessionRepositoryAdapter implements TrainingSessionReposito
 
     private final TrainingSessionJpaRepository jpa;
 
-    /** The app-level pre-check in TrainingSessionService.start() can race two concurrent
-     *  requests; the partial unique index closes it at the DB level. Translate that
-     *  violation into the same domain exception the pre-check throws. */
     @Override
     public TrainingSession save(TrainingSession session) {
         try {

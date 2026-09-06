@@ -143,8 +143,6 @@ public class TrainingSessionService implements TrainingSessionUseCase {
         return session;
     }
 
-    /** A session can only reference exercises the caller owns, or exercises published and visible
-     *  to anyone — same rule as Routine. */
     private void validateSlotExercisesAreAccessible(List<TrainingSlot> slots, Long ownerId) {
         for (TrainingSlot slot : slots) {
             Exercise exercise = exerciseRepository.findById(slot.getExerciseId())

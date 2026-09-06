@@ -44,9 +44,6 @@ public class TrainingSessionJpaEntity {
     @Column(name = "final_note", columnDefinition = "TEXT")
     private String finalNote;
 
-    /** The mutable core of the session (slots + sets, including done flags) as JSON — a single-row
-     *  read-modify-write, chosen over relational child tables to avoid the delete-and-reinsert-whole-
-     *  collection behavior Hibernate uses for @ElementCollection on every update (see routine_slot_sets). */
     @Column(name = "slots_json", nullable = false, columnDefinition = "TEXT")
     private String slotsJson;
 

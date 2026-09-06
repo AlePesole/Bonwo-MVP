@@ -204,9 +204,6 @@ public class ExerciseService implements ExerciseUseCase {
         return toResponseBulk(List.of(e)).get(0);
     }
 
-    /** Batch-resolves equipment/activity/trainingGoal/muscle-subgroup/media for any number of
-     *  exercises in ~6 queries total, instead of ~6 queries PER exercise — this is what fixes the
-     *  N+1 that routine and training-session responses used to trigger per slot. */
     private List<ExerciseResponse> toResponseBulk(List<Exercise> exercises) {
         if (exercises.isEmpty()) return List.of();
 

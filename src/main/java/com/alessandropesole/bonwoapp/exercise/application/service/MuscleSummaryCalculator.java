@@ -13,12 +13,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-/**
- * Validates and calculates MuscleSummary from a list of MuscleEntry.
- * Scores aggregated by MuscleGroup id:
- *   Each group's score is the average activation of its selected sub-groups.
- * muscleGroupIds are derived at response time from muscleSummary.getScores().keySet().
- */
 @Component
 @RequiredArgsConstructor
 public class MuscleSummaryCalculator {
@@ -53,7 +47,6 @@ public class MuscleSummaryCalculator {
         return Math.round(value * 100.0) / 100.0;
     }
 
-    /** Aggregates multiple summaries — used for Routine and Program. */
     public MuscleSummary aggregate(List<MuscleSummary> summaries) {
         if (summaries == null || summaries.isEmpty()) return MuscleSummary.empty();
         Map<Long, Double> total = new HashMap<>();
