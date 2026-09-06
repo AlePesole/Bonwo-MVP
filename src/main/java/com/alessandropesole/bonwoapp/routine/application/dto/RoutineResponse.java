@@ -26,6 +26,6 @@ public record RoutineResponse(
         List<ActivityResponse> activities,
         List<TrainingGoalResponse> trainingGoals,
         Instant createdAt,
-        Long trainingProgramId,   // non-null if this routine belongs to a TrainingProgram's aggregate
-        Integer position          // order within that program; null for standalone routines
+        Long trainingProgramId,
+        Integer position
 ) {}

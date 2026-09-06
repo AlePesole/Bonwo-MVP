@@ -7,9 +7,9 @@ import java.util.List;
 
 public record TrainingSlotResponse(
         Long exerciseId,
-        ExerciseResponse exercise,     // resolved lazily — null if the exercise was deleted
+        ExerciseResponse exercise,
         int position,
         List<TrainingSetResponse> sets,
         Duration restBetweenSets,
-        boolean done                   // derived — true once every set in this slot is done
+        boolean done
 ) {}

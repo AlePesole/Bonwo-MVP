@@ -12,13 +12,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-/**
- * A performed (or in-progress) instance of a Routine. Started from a Routine snapshot — title and,
- * if applicable, trainingProgramId are copied at start time so this log survives even if the source
- * Routine is later edited or deleted (routineId is a soft reference, nulled on delete).
- * Deliberately does not store description, level, thumbnail, or the equipment/activity/trainingGoal
- * lists — those belong to the Routine plan, not to a specific performance of it.
- */
 @Getter
 public class TrainingSession extends AggregateRoot {
 
@@ -74,8 +67,6 @@ public class TrainingSession extends AggregateRoot {
         return s;
     }
 
-    /** Adding/removing exercises, editing sets and toggling done all go through here — allowed
-     *  in any status, so past sessions can still be corrected once completed. */
     public void update(List<TrainingSlot> newSlots, String finalNote) {
         if (newSlots != null) {
             validateNoDuplicatePositions(newSlots);
@@ -84,7 +75,6 @@ public class TrainingSession extends AggregateRoot {
         if (finalNote != null) this.finalNote = finalNote;
     }
 
-    /** Terminal transition — once COMPLETED, a session can be edited but never restarted or reopened. */
     public void complete(String finalNote) {
         if (status == SessionStatus.COMPLETED) {
             throw new SessionAlreadyCompletedException("This training session is already completed");

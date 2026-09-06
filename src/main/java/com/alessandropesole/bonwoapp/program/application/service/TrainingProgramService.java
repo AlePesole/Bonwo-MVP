@@ -147,12 +147,6 @@ public class TrainingProgramService implements TrainingProgramUseCase {
         return routineUseCase.create(routineReq, ownerId, trainingProgramId, dto.position());
     }
 
-    /**
-     * Full-list-replace, same convention as Routine's own slots: any existing program routine whose id
-     * isn't present in dtos gets deleted; entries with an id get updated in place (content + position);
-     * entries without one are created fresh. Reuses RoutineUseCase entirely — TrainingProgramService
-     * never touches slot/thumbnail logic directly, avoiding any duplication of what Routine already does.
-     */
     private List<RoutineResponse> diffAndApplyRoutines(List<ProgramRoutineDto> dtos, Long programId, Long ownerId) {
         List<Routine> existing = routineRepository.findByTrainingProgramId(programId);
         Set<Long> incomingIds = new HashSet<>();
@@ -187,14 +181,6 @@ public class TrainingProgramService implements TrainingProgramUseCase {
                 .toList();
     }
 
-    /**
-     * A fresh upload always wins. Otherwise, an explicit thumbnailId is used as-is after verifying
-     * ownership — this is how duplicating a program can point at the source's existing image without
-     * re-uploading it (safe since removing a thumbnail only clears the reference, never deletes the
-     * underlying image — see TrainingProgramService.update). Same logic as RoutineService's own
-     * resolveNewThumbnailId — duplicated rather than shared, consistent with how every service here
-     * resolves its own thumbnail handling directly against MediaService.
-     */
     private Long resolveNewThumbnailId(String thumbnailUploadToken, Long thumbnailId, Long ownerId) {
         if (thumbnailUploadToken != null) return mediaService.claimImage(thumbnailUploadToken, ownerId);
         if (thumbnailId != null) {

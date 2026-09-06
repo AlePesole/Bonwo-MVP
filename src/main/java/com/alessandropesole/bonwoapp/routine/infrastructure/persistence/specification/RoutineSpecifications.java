@@ -21,8 +21,6 @@ public final class RoutineSpecifications {
         return (root, query, cb) -> {
             query.distinct(true);
 
-            // exclude routines that belong to a TrainingProgram's aggregate — those are managed through
-            // /training-programs, not the personal routine library
             var predicate = cb.and(
                     cb.equal(root.get("ownerId"), ownerId),
                     cb.isNull(root.get("trainingProgramId")));
@@ -31,9 +29,6 @@ public final class RoutineSpecifications {
                 predicate = cb.and(predicate, cb.like(cb.lower(root.get("title")), "%" + title.toLowerCase() + "%"));
             }
             if (muscleSubGroupIds != null && !muscleSubGroupIds.isEmpty()) {
-                // slots.exerciseId has no mapped JPA association to exercises (same convention as the
-                // rest of the app — aggregates only reference each other via plain FK columns), so this
-                // needs a second, manually-correlated root instead of a nested join.
                 var slots = root.<RoutineJpaEntity, ExerciseSlotJpaEntity>join("slots");
                 Root<ExerciseJpaEntity> exerciseRoot = query.from(ExerciseJpaEntity.class);
                 var muscles = exerciseRoot.<ExerciseJpaEntity, MuscleEntryEmbeddable>join("muscles");

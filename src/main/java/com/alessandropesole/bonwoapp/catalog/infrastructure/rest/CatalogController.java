@@ -27,7 +27,6 @@ public class CatalogController {
     private final TrainingGoalUseCase trainingGoalUseCase;
     private final CurrentUserResolver currentUserResolver;
 
-    // -- Equipment --
 
     @Operation(
             summary = "List equipment",
@@ -76,7 +75,6 @@ public class CatalogController {
         return ResponseEntity.noContent().build();
     }
 
-    // -- Activity --
 
     @Operation(
             summary = "List activities",
@@ -125,7 +123,6 @@ public class CatalogController {
         return ResponseEntity.noContent().build();
     }
 
-    // -- TrainingGoal --
 
     @Operation(
             summary = "List training goals",

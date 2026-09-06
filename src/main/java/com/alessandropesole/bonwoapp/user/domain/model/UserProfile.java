@@ -15,7 +15,7 @@ public final class UserProfile {
     private final Integer ageYears;
     private final Integer heightCm;
     private final Double weightKg;
-    private final Set<Long> activityIds;   // no duplicates
+    private final Set<Long> activityIds;
 
     private UserProfile(Long avatarId, String bio,
                         Integer ageYears, Integer heightCm, Double weightKg,

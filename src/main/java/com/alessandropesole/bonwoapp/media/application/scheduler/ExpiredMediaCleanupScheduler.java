@@ -8,11 +8,6 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-/**
- * Runs every 15 minutes (default).
- * Deletes PENDING videos and images whose uploadToken has expired
- * without being claimed by an entity.
- */
 @Slf4j
 @Component
 @RequiredArgsConstructor

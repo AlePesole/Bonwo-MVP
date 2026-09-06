@@ -93,9 +93,6 @@ class MediaResolverTest {
 
     @Test
     void resolveImages_emptyResultMapDoesNotThrowOnNullKeyLookup() {
-        // Reproduces the 500 seen when every exercise in a batch has no thumbnail: the caller does
-        // thumbnailMap.get(exercise.getThumbnailId()), which is null — Map.of() rejects null keys
-        // even on get(), so this must not be backed by Map.of().
         Map<Long, ImageResponse> result = mediaResolver.resolveImages(Set.of());
 
         assertThat(result.get(null)).isNull();

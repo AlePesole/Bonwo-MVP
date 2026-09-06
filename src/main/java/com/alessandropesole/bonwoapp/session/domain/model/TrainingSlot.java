@@ -8,11 +8,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-/**
- * An exercise slot within a TrainingSession. Unlike the routine module's ExerciseSlot (a fixed plan),
- * this can be freely added/removed during the session, and its `done` status is never stored directly —
- * it's always derived from whether every one of its sets is done.
- */
 @Getter
 public final class TrainingSlot {
 
@@ -40,7 +35,6 @@ public final class TrainingSlot {
         return new TrainingSlot(exerciseId, position, sets, restBetweenSets);
     }
 
-    /** An exercise is done once every one of its sets is marked done. Never manually settable. */
     public boolean isDone() {
         return !sets.isEmpty() && sets.stream().allMatch(TrainingSet::isDone);
     }

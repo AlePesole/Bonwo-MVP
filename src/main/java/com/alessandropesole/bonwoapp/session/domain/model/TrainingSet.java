@@ -7,10 +7,6 @@ import lombok.Getter;
 
 import java.time.Duration;
 
-/**
- * A single set actually performed during a TrainingSession. Same shape as the routine module's
- * SetConfig (the plan), plus a `done` flag that tracks whether this particular set was completed.
- */
 @Getter
 public final class TrainingSet {
 

@@ -44,7 +44,6 @@ public class Routine extends AggregateRoot {
                 equipmentIds, activityIds, trainingGoalIds, null, null);
     }
 
-    /** Internal factory used by TrainingProgramService to create a Routine that's part of a program's aggregate. */
     public static Routine create(Long ownerId, String title, String description,
                                  Level level, Long thumbnailId, List<ExerciseSlot> slots,
                                  Duration restBetweenExercises,
@@ -111,10 +110,6 @@ public class Routine extends AggregateRoot {
                 equipmentIds, activityIds, trainingGoalIds, null);
     }
 
-    /**
-     * newPosition is internal-only — set by TrainingProgramService when reordering a Routine within its
-     * program (never exposed on the public UpdateRoutineRequest, meaningless for a standalone routine).
-     */
     public void update(String title, String description,
                        Level level, Long thumbnailId, boolean removeThumbnail,
                        List<ExerciseSlot> newSlots,

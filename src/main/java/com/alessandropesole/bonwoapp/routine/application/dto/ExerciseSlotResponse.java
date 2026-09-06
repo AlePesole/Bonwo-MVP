@@ -7,7 +7,7 @@ import java.util.List;
 
 public record ExerciseSlotResponse(
         Long exerciseId,
-        ExerciseResponse exercise,     // resolved lazily — null if the exercise was deleted
+        ExerciseResponse exercise,
         int position,
         List<SetConfigResponse> sets,
         Duration restBetweenSets

@@ -26,8 +26,6 @@ public class ExerciseVisibilityResolver {
                 .orElse(false);
     }
 
-    /** Batched version of {@link #isVisible} — resolves every non-owned exercise's publication in
-     *  one query instead of one per exercise. Result always has an entry for every input exercise. */
     public Map<Long, Boolean> isVisibleBulk(List<Exercise> exercises, Long viewerId) {
         Set<Long> publicationIds = exercises.stream()
                 .filter(e -> !e.isOwnedBy(viewerId))

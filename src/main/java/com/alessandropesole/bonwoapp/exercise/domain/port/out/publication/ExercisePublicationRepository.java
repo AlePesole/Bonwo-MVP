@@ -20,22 +20,18 @@ public interface ExercisePublicationRepository {
 
     void deleteById(Long id);
 
-    /** Public feed — any author, PUBLIC visibility only. */
     Page<ExercisePublication> findFeed(PublicationType type, Set<Long> muscleSubGroupIds,
                                        Set<Long> equipmentIds, Set<Long> activityIds,
                                        Set<Long> trainingGoalIds, String title, Pageable pageable);
 
-    /** The caller's own publications, regardless of visibility. */
     Page<ExercisePublication> findByAuthor(Long authorId, PublicationType type, Set<Long> muscleSubGroupIds,
                                            Set<Long> equipmentIds, Set<Long> activityIds,
                                            Set<Long> trainingGoalIds, String title, Pageable pageable);
 
-    /** Publications the given user has liked. */
     Page<ExercisePublication> findLikedByUser(Long userId, PublicationType type, Set<Long> muscleSubGroupIds,
                                               Set<Long> equipmentIds, Set<Long> activityIds,
                                               Set<Long> trainingGoalIds, String title, Pageable pageable);
 
-    /** Publications the given user has saved. */
     Page<ExercisePublication> findSavedByUser(Long userId, PublicationType type, Set<Long> muscleSubGroupIds,
                                               Set<Long> equipmentIds, Set<Long> activityIds,
                                               Set<Long> trainingGoalIds, String title, Pageable pageable);

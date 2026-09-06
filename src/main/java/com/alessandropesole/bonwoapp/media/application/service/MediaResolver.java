@@ -16,10 +16,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-/**
- * Shared helper to resolve media ids to response DTOs.
- * Used by any service that needs to include image or video details in a response.
- */
 @Component
 @RequiredArgsConstructor
 public class MediaResolver {
@@ -41,8 +37,6 @@ public class MediaResolver {
                 .orElse(null);
     }
 
-    /** Batched version of {@link #resolveImage} — one query for any number of ids. Missing/null
-     *  ids are simply absent from the result map. */
     public Map<Long, ImageResponse> resolveImages(Set<Long> imageIds) {
         Set<Long> ids = imageIds.stream().filter(Objects::nonNull).collect(Collectors.toSet());
         if (ids.isEmpty()) return Collections.emptyMap();
@@ -50,7 +44,6 @@ public class MediaResolver {
                 .collect(Collectors.toMap(Image::getId, MediaDtoMapper::toResponse));
     }
 
-    /** Batched version of {@link #resolveVideo} — one query for any number of ids. */
     public Map<Long, VideoResponse> resolveVideos(Set<Long> videoIds) {
         Set<Long> ids = videoIds.stream().filter(Objects::nonNull).collect(Collectors.toSet());
         if (ids.isEmpty()) return Collections.emptyMap();
