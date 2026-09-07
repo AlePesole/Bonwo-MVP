@@ -10,4 +10,6 @@ export const profileApi = {
 
   patchMe: (body: UpdateProfileRequest) =>
     api.patch<UserProfileResponse>("/users/me", body).then((r) => r.data),
+
+  deleteMe: () => api.delete<void>("/users/me").then((r) => r.data),
 };
