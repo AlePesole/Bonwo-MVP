@@ -3,7 +3,6 @@ package com.alessandropesole.bonwoapp.user.application.service;
 import com.alessandropesole.bonwoapp.shared.infrastructure.exception.ResourceNotFoundException;
 import com.alessandropesole.bonwoapp.user.application.dto.AdminUpdateUserRequest;
 import com.alessandropesole.bonwoapp.user.application.dto.UserResponse;
-import com.alessandropesole.bonwoapp.user.domain.exception.AccountDeletedException;
 import com.alessandropesole.bonwoapp.user.domain.exception.AlreadyBannedException;
 import com.alessandropesole.bonwoapp.user.domain.exception.InvalidUsernameException;
 import com.alessandropesole.bonwoapp.user.domain.model.AccountStatus;
@@ -34,6 +33,8 @@ class UserManagementServiceTest {
 
     @Mock
     private UserRepository userRepository;
+    @Mock
+    private UserAccountDeletionService userAccountDeletionService;
 
     @InjectMocks
     private UserManagementService userManagementService;
@@ -158,25 +159,9 @@ class UserManagementServiceTest {
     }
 
     @Test
-    void deleteUser_softDeletesAndSaves() {
-        User user = activeUser();
-        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-
+    void deleteUser_delegatesToAccountDeletionService() {
         userManagementService.deleteUser(1L);
 
-        assertThat(user.getStatus()).isEqualTo(AccountStatus.DELETED);
-        verify(userRepository).save(user);
-    }
-
-    @Test
-    void changeRole_throwsWhenAccountDeleted() {
-        User user = User.reconstitute(1L, "user@example.com", "hashed", "johndoe",
-                UserRole.USER, AccountStatus.DELETED, UserProfile.empty(), Instant.now());
-        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
-
-        assertThatThrownBy(() -> userManagementService.changeRole(1L, UserRole.ADMIN))
-                .isInstanceOf(AccountDeletedException.class);
-
-        verify(userRepository, never()).save(any());
+        verify(userAccountDeletionService).deleteAccount(1L);
     }
 }

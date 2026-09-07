@@ -43,6 +43,8 @@ class UserProfileServiceTest {
     private CatalogValidator catalogValidator;
     @Mock
     private ActivityRepository activityRepository;
+    @Mock
+    private UserAccountDeletionService userAccountDeletionService;
 
     @InjectMocks
     private UserProfileService userProfileService;
@@ -172,5 +174,12 @@ class UserProfileServiceTest {
 
         assertThatThrownBy(() -> userProfileService.updateProfile(1L, req))
                 .isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    @Test
+    void deleteMyAccount_delegatesToAccountDeletionService() {
+        userProfileService.deleteMyAccount(1L);
+
+        verify(userAccountDeletionService).deleteAccount(1L);
     }
 }

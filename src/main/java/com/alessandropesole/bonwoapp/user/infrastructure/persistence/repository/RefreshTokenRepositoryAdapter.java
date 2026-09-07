@@ -23,4 +23,9 @@ public class RefreshTokenRepositoryAdapter implements RefreshTokenRepository {
     public Optional<RefreshToken> findByTokenId(String tokenId) {
         return jpa.findByTokenId(tokenId).map(RefreshTokenMapper::toDomain);
     }
+
+    @Override
+    public void deleteAllByUserId(Long userId) {
+        jpa.deleteAllByUserId(userId);
+    }
 }

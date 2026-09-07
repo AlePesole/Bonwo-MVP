@@ -42,6 +42,11 @@ public class VideoRepositoryAdapter implements VideoRepository {
     }
 
     @Override
+    public List<Video> findAllByOwnerId(Long ownerId) {
+        return jpa.findAllByOwnerId(ownerId).stream().map(MediaPersistenceMapper::toDomain).toList();
+    }
+
+    @Override
     public void deleteById(Long id) {
         jpa.deleteById(id);
     }

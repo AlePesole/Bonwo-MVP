@@ -8,4 +8,6 @@ public interface RefreshTokenRepository {
     RefreshToken save(RefreshToken token);
 
     Optional<RefreshToken> findByTokenId(String tokenId);
+
+    void deleteAllByUserId(Long userId);
 }

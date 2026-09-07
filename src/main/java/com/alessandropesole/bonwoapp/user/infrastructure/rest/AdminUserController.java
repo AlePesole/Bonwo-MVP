@@ -77,7 +77,9 @@ public class AdminUserController {
 
     @Operation(
             summary = "Delete a user",
-            description = "Soft-deletes the user, anonymizing their account data. Admin only."
+            description = "Permanently deletes the user and all of their content — exercises, routines, " +
+                    "programs, training sessions, publications, likes/saves and uploaded media. " +
+                    "This cannot be undone. Admin only."
     )
     @DeleteMapping("/{userId}")
     public ResponseEntity<Void> deleteUser(@PathVariable Long userId) {

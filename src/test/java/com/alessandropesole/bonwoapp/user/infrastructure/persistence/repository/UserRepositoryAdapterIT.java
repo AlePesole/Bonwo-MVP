@@ -101,21 +101,17 @@ class UserRepositoryAdapterIT extends AbstractIntegrationTest {
     }
 
     @Test
-    void loadUserByUsername_disablesAccountForDeletedUser() {
-        User user = User.register("user@example.com", "hash", "johndoe");
-        User saved = userRepository.save(user);
-        saved.softDelete();
-        userRepository.save(saved);
-
-        UserDetails details = userRepository.loadUserByUsername(saved.getEmail());
-
-        assertThat(details.isEnabled()).isFalse();
-        assertThat(details.isAccountNonLocked()).isTrue();
-    }
-
-    @Test
     void loadUserByUsername_throwsWhenEmailNotFound() {
         assertThatThrownBy(() -> userRepository.loadUserByUsername("unknown@example.com"))
                 .isInstanceOf(UsernameNotFoundException.class);
+    }
+
+    @Test
+    void deleteById_removesUser() {
+        User saved = userRepository.save(User.register("user@example.com", "hash", "johndoe"));
+
+        userRepository.deleteById(saved.getId());
+
+        assertThat(userRepository.findById(saved.getId())).isEmpty();
     }
 }

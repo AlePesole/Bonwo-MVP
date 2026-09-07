@@ -1,7 +1,6 @@
 package com.alessandropesole.bonwoapp.user.domain.model;
 
 import com.alessandropesole.bonwoapp.shared.domain.AggregateRoot;
-import com.alessandropesole.bonwoapp.user.domain.exception.AccountDeletedException;
 import com.alessandropesole.bonwoapp.user.domain.exception.AlreadyBannedException;
 import com.alessandropesole.bonwoapp.user.domain.exception.InvalidEmailException;
 import com.alessandropesole.bonwoapp.user.domain.exception.InvalidUsernameException;
@@ -68,7 +67,6 @@ public class User extends AggregateRoot {
 
     public void ban() {
         if (this.status == AccountStatus.BANNED) throw new AlreadyBannedException(this.email);
-        if (this.status == AccountStatus.DELETED) throw new AccountDeletedException(this.email);
         this.status = AccountStatus.BANNED;
     }
 
@@ -77,17 +75,7 @@ public class User extends AggregateRoot {
         this.status = AccountStatus.ACTIVE;
     }
 
-    public void softDelete() {
-        if (this.status == AccountStatus.DELETED) throw new AccountDeletedException(this.email);
-        this.email = "deleted_" + this.id + "@deleted.fitapp";
-        this.passwordHash = "[deleted]";
-        this.username = "deleted_" + this.id;
-        this.profile = UserProfile.empty();
-        this.status = AccountStatus.DELETED;
-    }
-
     public void changeRole(UserRole newRole) {
-        if (this.status == AccountStatus.DELETED) throw new AccountDeletedException(this.email);
         this.role = newRole;
     }
 

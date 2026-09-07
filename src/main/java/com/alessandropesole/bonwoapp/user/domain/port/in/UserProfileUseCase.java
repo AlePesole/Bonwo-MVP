@@ -9,4 +9,6 @@ public interface UserProfileUseCase {
     UserProfileResponse getPublicProfile(String username);
 
     UserProfileResponse updateProfile(Long userId, UpdateProfileRequest request);
+
+    void deleteMyAccount(Long userId);
 }

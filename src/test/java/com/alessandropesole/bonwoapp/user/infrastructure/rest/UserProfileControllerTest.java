@@ -21,6 +21,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -115,5 +117,22 @@ class UserProfileControllerTest {
                         .content(objectMapper.writeValueAsString(
                                 new UpdateProfileRequest(null, null, 5, null, null, null))))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void deleteMyAccount_withoutAuthentication_isUnauthorized() throws Exception {
+        mockMvc.perform(delete("/users/me"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @WithMockUser
+    void deleteMyAccount_withAuthenticatedUser_isNoContent() throws Exception {
+        when(currentUserResolver.resolveId(any())).thenReturn(1L);
+
+        mockMvc.perform(delete("/users/me"))
+                .andExpect(status().isNoContent());
+
+        verify(profileUseCase).deleteMyAccount(1L);
     }
 }

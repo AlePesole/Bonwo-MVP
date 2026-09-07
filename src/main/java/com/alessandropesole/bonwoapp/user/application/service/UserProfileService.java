@@ -34,6 +34,7 @@ public class UserProfileService implements UserProfileUseCase {
     private final MediaService mediaService;
     private final CatalogValidator catalogValidator;
     private final ActivityRepository activityRepository;
+    private final UserAccountDeletionService userAccountDeletionService;
 
     @Override
     @Transactional(readOnly = true)
@@ -78,6 +79,11 @@ public class UserProfileService implements UserProfileUseCase {
 
         User saved = userRepository.save(user);
         return toResponse(saved);
+    }
+
+    @Override
+    public void deleteMyAccount(Long userId) {
+        userAccountDeletionService.deleteAccount(userId);
     }
 
     private UserProfileResponse toResponse(User user) {

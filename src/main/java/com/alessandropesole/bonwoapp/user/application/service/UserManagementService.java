@@ -20,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class UserManagementService implements UserManagementUseCase {
 
     private final UserRepository userRepository;
+    private final UserAccountDeletionService userAccountDeletionService;
 
     @Override
     @Transactional(readOnly = true)
@@ -59,9 +60,7 @@ public class UserManagementService implements UserManagementUseCase {
 
     @Override
     public void deleteUser(Long userId) {
-        User u = findOrThrow(userId);
-        u.softDelete();
-        userRepository.save(u);
+        userAccountDeletionService.deleteAccount(userId);
     }
 
     @Override

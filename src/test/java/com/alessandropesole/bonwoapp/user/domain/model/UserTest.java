@@ -1,6 +1,5 @@
 package com.alessandropesole.bonwoapp.user.domain.model;
 
-import com.alessandropesole.bonwoapp.user.domain.exception.AccountDeletedException;
 import com.alessandropesole.bonwoapp.user.domain.exception.AlreadyBannedException;
 import com.alessandropesole.bonwoapp.user.domain.exception.InvalidEmailException;
 import com.alessandropesole.bonwoapp.user.domain.exception.InvalidUsernameException;
@@ -97,14 +96,6 @@ class UserTest {
     }
 
     @Test
-    void ban_throwsWhenAccountDeleted() {
-        User user = User.reconstitute(1L, "user@example.com", "hash", "johndoe",
-                UserRole.USER, AccountStatus.DELETED, UserProfile.empty(), null);
-
-        assertThatThrownBy(user::ban).isInstanceOf(AccountDeletedException.class);
-    }
-
-    @Test
     void unban_restoresActiveStatus() {
         User user = User.register("user@example.com", "hash", "johndoe");
         user.ban();
@@ -122,38 +113,6 @@ class UserTest {
     }
 
     @Test
-    void unban_throwsNotBannedExceptionEvenWhenDeleted() {
-        User user = User.reconstitute(1L, "user@example.com", "hash", "johndoe",
-                UserRole.USER, AccountStatus.DELETED, UserProfile.empty(), null);
-
-        assertThatThrownBy(user::unban).isInstanceOf(NotBannedException.class);
-    }
-
-    @Test
-    void softDelete_anonymizesAccountData() {
-        User user = User.reconstitute(7L, "user@example.com", "hash", "johndoe",
-                UserRole.USER, AccountStatus.ACTIVE,
-                UserProfile.of(1L, "bio", 30, 180, 80.0, null), null);
-
-        user.softDelete();
-
-        assertThat(user.getEmail()).isEqualTo("deleted_7@deleted.fitapp");
-        assertThat(user.getUsername()).isEqualTo("deleted_7");
-        assertThat(user.getPasswordHash()).isEqualTo("[deleted]");
-        assertThat(user.getStatus()).isEqualTo(AccountStatus.DELETED);
-        assertThat(user.getProfile().getBio()).isNull();
-        assertThat(user.getProfile().getAvatarId()).isNull();
-    }
-
-    @Test
-    void softDelete_throwsWhenAlreadyDeleted() {
-        User user = User.reconstitute(1L, "user@example.com", "hash", "johndoe",
-                UserRole.USER, AccountStatus.DELETED, UserProfile.empty(), null);
-
-        assertThatThrownBy(user::softDelete).isInstanceOf(AccountDeletedException.class);
-    }
-
-    @Test
     void changeRole_worksOnBannedAccount() {
         User user = User.reconstitute(1L, "user@example.com", "hash", "johndoe",
                 UserRole.USER, AccountStatus.BANNED, UserProfile.empty(), null);
@@ -161,15 +120,6 @@ class UserTest {
         user.changeRole(UserRole.ADMIN);
 
         assertThat(user.getRole()).isEqualTo(UserRole.ADMIN);
-    }
-
-    @Test
-    void changeRole_throwsWhenAccountDeleted() {
-        User user = User.reconstitute(1L, "user@example.com", "hash", "johndoe",
-                UserRole.USER, AccountStatus.DELETED, UserProfile.empty(), null);
-
-        assertThatThrownBy(() -> user.changeRole(UserRole.ADMIN))
-                .isInstanceOf(AccountDeletedException.class);
     }
 
     @Test

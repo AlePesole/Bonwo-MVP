@@ -7,6 +7,7 @@ import com.alessandropesole.bonwoapp.user.domain.port.in.UserProfileUseCase;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -56,5 +57,20 @@ public class UserProfileController {
             @Valid @RequestBody UpdateProfileRequest request) {
         Long userId = currentUserResolver.resolveId(principal);
         return ResponseEntity.ok(profileUseCase.updateProfile(userId, request));
+    }
+
+    @Operation(
+            summary = "Delete my account",
+            description = "Permanently deletes the currently authenticated user's account and all of " +
+                    "their content — exercises, routines, programs, training sessions, publications, " +
+                    "likes/saves and uploaded media. This cannot be undone."
+    )
+    @DeleteMapping("/me")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<Void> deleteMyAccount(
+            @AuthenticationPrincipal UserDetails principal) {
+        Long userId = currentUserResolver.resolveId(principal);
+        profileUseCase.deleteMyAccount(userId);
+        return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
     }
 }
