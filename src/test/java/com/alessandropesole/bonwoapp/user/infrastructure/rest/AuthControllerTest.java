@@ -8,6 +8,8 @@ import com.alessandropesole.bonwoapp.user.application.dto.AuthRequest;
 import com.alessandropesole.bonwoapp.user.application.dto.AuthResponse;
 import com.alessandropesole.bonwoapp.user.application.dto.RegisterRequest;
 import com.alessandropesole.bonwoapp.user.application.dto.UserResponse;
+import com.alessandropesole.bonwoapp.user.application.exception.EmailAlreadyRegisteredException;
+import com.alessandropesole.bonwoapp.user.application.exception.InvalidRefreshTokenException;
 import com.alessandropesole.bonwoapp.user.domain.model.AccountStatus;
 import com.alessandropesole.bonwoapp.user.domain.model.UserRole;
 import com.alessandropesole.bonwoapp.user.domain.port.in.AuthUseCase;
@@ -16,6 +18,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.LockedException;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -95,12 +99,56 @@ class AuthControllerTest {
     }
 
     @Test
+    void login_withBadCredentials_isUnauthorized() throws Exception {
+        when(authUseCase.login(any())).thenThrow(new BadCredentialsException("Bad credentials"));
+
+        mockMvc.perform(post("/auth/login")
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(
+                                new AuthRequest("user@example.com", "wrongpassword"))))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.detail").value("Invalid email or password"));
+    }
+
+    @Test
+    void login_forBannedAccount_isForbidden() throws Exception {
+        when(authUseCase.login(any())).thenThrow(new LockedException("Account is locked"));
+
+        mockMvc.perform(post("/auth/login")
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(
+                                new AuthRequest("user@example.com", "password123"))))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.detail").value("Your account has been banned"));
+    }
+
+    @Test
     void login_withBlankPassword_isBadRequest() throws Exception {
         mockMvc.perform(post("/auth/login")
                         .contentType("application/json")
                         .content(objectMapper.writeValueAsString(
                                 new AuthRequest("user@example.com", ""))))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void register_withDuplicateEmail_isConflict() throws Exception {
+        when(authUseCase.register(any())).thenThrow(new EmailAlreadyRegisteredException("user@example.com"));
+
+        mockMvc.perform(post("/auth/register")
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(
+                                new RegisterRequest("user@example.com", "password123", "johndoe"))))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void refresh_withInvalidToken_isUnauthorized() throws Exception {
+        when(authUseCase.refreshToken("bad-token")).thenThrow(new InvalidRefreshTokenException());
+
+        mockMvc.perform(post("/auth/refresh").param("refreshToken", "bad-token"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.detail").value("Invalid or expired refresh token"));
     }
 
     @Test
@@ -117,5 +165,17 @@ class AuthControllerTest {
     void logout_isNoContent() throws Exception {
         mockMvc.perform(post("/auth/logout").param("refreshToken", "some-token"))
                 .andExpect(status().isNoContent());
+    }
+
+    @Test
+    void refresh_withoutTokenParam_isBadRequest() throws Exception {
+        mockMvc.perform(post("/auth/refresh"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void logout_withoutTokenParam_isBadRequest() throws Exception {
+        mockMvc.perform(post("/auth/logout"))
+                .andExpect(status().isBadRequest());
     }
 }
