@@ -1,0 +1,7 @@
+target
+frontend
+.git
+.idea
+.mvn
+*.iml
+.env
