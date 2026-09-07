@@ -17,5 +17,7 @@ public interface VideoRepository {
 
     List<Video> findAllExpiredPending();
 
+    List<Video> findAllByOwnerId(Long ownerId);
+
     void deleteById(Long id);
 }

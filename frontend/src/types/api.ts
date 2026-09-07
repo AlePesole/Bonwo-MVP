@@ -1,7 +1,7 @@
 // ── Auth ──────────────────────────────────────────────────────────────────────
 
 export type UserRole = "USER" | "ADMIN";
-export type AccountStatus = "ACTIVE" | "BANNED" | "DELETED";
+export type AccountStatus = "ACTIVE" | "BANNED";
 
 export interface UserResponse {
   id: number;

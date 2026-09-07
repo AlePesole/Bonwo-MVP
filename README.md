@@ -142,7 +142,7 @@ The frontend is a React SPA consuming the API via Axios/TanStack Query, organize
 - **Stateless JWT** with an access token + refresh token pair. The access token (`Authorization: Bearer <token>`) is validated on every request via a filter (`JwtAuthenticationFilter`); the refresh token is single-use — refreshing rotates it and revokes the old one (`POST /auth/refresh`).
 - Passwords are stored hashed (BCrypt via Spring Security).
 - Two roles: **`USER`** (default on signup) and **`ADMIN`**. The first admin can be seeded via environment variables (`ADMIN_EMAIL`/`ADMIN_USERNAME`/`ADMIN_PASSWORD`) or promoted later via `PATCH /admin/users/{id}/role`.
-- Account states: `ACTIVE`, `BANNED` (blocks login and refresh, doesn't delete data) and `DELETED` (soft-delete: anonymizes email/username/profile, doesn't delete the content the user created).
+- Account states: `ACTIVE` and `BANNED` (blocks login and refresh, doesn't delete data). Deleting an account is permanent and irreversible — it removes the user row entirely, not just its status (see `DELETE /users/me` / `DELETE /admin/users/{id}` below).
 - Two authorization layers: admin routes (`/admin/**`, catalog mutations) restricted by role via `@PreAuthorize("hasRole('ADMIN')")`; ownership of personal resources (e.g. "this routine isn't yours") checked at the service layer, returning 403.
 
 ## 📖 Swagger / OpenAPI Docs
@@ -179,8 +179,8 @@ Work is planned on the **User Stories** board (GitHub Projects, link below), and
 
 ## ✅ Implemented Features
 
-- 🔑 Authentication (register, login, token refresh/rotation, logout) and own-profile management
-- 🛡️ Admin panel: user management (ban/unban, role change, soft-delete) and catalog management (equipment, activities, training goals, muscle groups/sub-groups)
+- 🔑 Authentication (register, login, token refresh/rotation, logout), own-profile management and self-service account deletion
+- 🛡️ Admin panel: user management (ban/unban, role change, permanent account deletion) and catalog management (equipment, activities, training goals, muscle groups/sub-groups)
 - 🏋️ Full CRUD for personal exercises, with a muscle map (primary/secondary/stabilizer activation per sub-group), video and image
 - 🔍 Filtering exercises/routines by muscle sub-group (primary activation only), equipment, activity, goal and title
 - 📢 Publishing exercises to the public feed, with likes and saves
@@ -210,6 +210,7 @@ Common prefix: `/api/v1`. Endpoints marked **Admin** require the `ADMIN` role; t
 | GET | `/users/me` | Full profile of the authenticated user |
 | GET | `/users/{username}` | Another user's public profile |
 | PATCH | `/users/me` | Updates your own profile |
+| DELETE | `/users/me` | Permanently deletes your own account and everything you created |
 
 ### 🛡️ `/admin/users` — User management (Admin)
 | Method | Route | Description |
@@ -219,7 +220,7 @@ Common prefix: `/api/v1`. Endpoints marked **Admin** require the `ADMIN` role; t
 | PATCH | `/admin/users/{userId}` | Updates a user's data |
 | POST | `/admin/users/{userId}/ban` | Bans the user |
 | POST | `/admin/users/{userId}/unban` | Removes the ban |
-| DELETE | `/admin/users/{userId}` | Soft-deletes (anonymizes) the user |
+| DELETE | `/admin/users/{userId}` | Permanently deletes the user and everything they created |
 | PATCH | `/admin/users/{userId}/role` | Changes the role (USER/ADMIN) |
 
 ### 📦 `/catalog` — Shared catalog (public read, Admin write)

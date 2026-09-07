@@ -166,12 +166,18 @@ export function AdminUsersPage() {
                       <DropdownMenuItem
                         className="text-destructive focus:text-destructive"
                         onClick={() => {
-                          if (confirm(`Delete @${u.username}? This cannot be undone.`)) {
+                          if (
+                            confirm(
+                              `Permanently delete @${u.username}? This erases their profile and everything ` +
+                                `they created — exercises, routines, programs, training sessions, publications ` +
+                                `and uploaded media. This cannot be undone.`
+                            )
+                          ) {
                             deleteMutation.mutate(u.id);
                           }
                         }}
                       >
-                        Delete (soft)
+                        Delete
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>

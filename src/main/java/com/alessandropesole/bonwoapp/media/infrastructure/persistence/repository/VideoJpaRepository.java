@@ -14,4 +14,6 @@ public interface VideoJpaRepository extends JpaRepository<VideoJpaEntity, Long> 
 
     @Query("SELECT v FROM VideoJpaEntity v WHERE v.status = 'PENDING' AND v.expiresAt < :now")
     List<VideoJpaEntity> findAllExpiredPending(@org.springframework.data.repository.query.Param("now") Instant now);
+
+    List<VideoJpaEntity> findAllByOwnerId(Long ownerId);
 }

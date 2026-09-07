@@ -58,6 +58,11 @@ public class UserRepositoryAdapter implements UserRepository, UserDetailsService
     }
 
     @Override
+    public void deleteById(Long id) {
+        jpa.deleteById(id);
+    }
+
+    @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
         return jpa.findByEmail(email)
                 .map(e -> org.springframework.security.core.userdetails.User.builder()
@@ -65,7 +70,6 @@ public class UserRepositoryAdapter implements UserRepository, UserDetailsService
                         .password(e.getPasswordHash())
                         .authorities(List.of(new SimpleGrantedAuthority("ROLE_" + e.getRole().name())))
                         .accountLocked(e.getStatus() == AccountStatus.BANNED)
-                        .disabled(e.getStatus() == AccountStatus.DELETED)
                         .build())
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + email));
     }

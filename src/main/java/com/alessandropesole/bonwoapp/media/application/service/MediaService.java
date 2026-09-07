@@ -142,6 +142,10 @@ public class MediaService {
         return expired.size();
     }
 
+    public void deleteAllVideosOwnedBy(Long ownerId) {
+        videoRepository.findAllByOwnerId(ownerId).forEach(this::deleteVideoInternal);
+    }
+
     public int deleteOrphanedImages() {
         var threshold = Instant.now().minus(mediaProperties.orphanGraceHours(), ChronoUnit.HOURS);
         var orphaned = imageRepository.findAllOrphaned(threshold);
