@@ -20,6 +20,7 @@ import com.alessandropesole.bonwoapp.routine.application.dto.CreateRoutineReques
 import com.alessandropesole.bonwoapp.routine.application.dto.ExerciseSlotDto;
 import com.alessandropesole.bonwoapp.routine.application.dto.RoutineResponse;
 import com.alessandropesole.bonwoapp.routine.application.dto.SetConfigDto;
+import com.alessandropesole.bonwoapp.routine.application.dto.UpdateRoutineRequest;
 import com.alessandropesole.bonwoapp.routine.domain.model.ExerciseSlot;
 import com.alessandropesole.bonwoapp.routine.domain.model.Routine;
 import com.alessandropesole.bonwoapp.routine.domain.model.SetConfig;
@@ -97,7 +98,6 @@ class RoutineServiceTest {
         Exercise exercise = ownedExercise();
         when(exerciseRepository.findById(EXERCISE_ID)).thenReturn(Optional.of(exercise));
         when(exerciseVisibilityResolver.isVisible(exercise, OWNER_ID)).thenReturn(true);
-        when(exerciseUseCase.getById(EXERCISE_ID, OWNER_ID)).thenReturn(exerciseResponse(Map.of(1L, 0.8)));
         when(exerciseUseCase.getVisibleByIds(Set.of(EXERCISE_ID), OWNER_ID))
                 .thenReturn(Map.of(EXERCISE_ID, exerciseResponse(Map.of(1L, 0.8))));
         when(muscleSummaryCalculator.aggregate(anyList())).thenReturn(MuscleSummary.of(Map.of(1L, 0.8)));
@@ -120,7 +120,6 @@ class RoutineServiceTest {
         Exercise exercise = publishedExerciseOwnedBySomeoneElse();
         when(exerciseRepository.findById(EXERCISE_ID)).thenReturn(Optional.of(exercise));
         when(exerciseVisibilityResolver.isVisible(exercise, OWNER_ID)).thenReturn(true);
-        when(exerciseUseCase.getById(EXERCISE_ID, OWNER_ID)).thenReturn(exerciseResponse(Map.of(1L, 0.8)));
         when(exerciseUseCase.getVisibleByIds(Set.of(EXERCISE_ID), OWNER_ID))
                 .thenReturn(Map.of(EXERCISE_ID, exerciseResponse(Map.of(1L, 0.8))));
         when(muscleSummaryCalculator.aggregate(anyList())).thenReturn(MuscleSummary.of(Map.of(1L, 0.8)));
@@ -136,17 +135,46 @@ class RoutineServiceTest {
     }
 
     @Test
-    void create_throwsNotFoundWhenSlotExerciseDoesNotExist() {
+    void create_succeedsWhenSlotExerciseDoesNotExist() {
         CreateRoutineRequest req = new CreateRoutineRequest("Push Day", null, Level.INTERMEDIATE, null, null,
                 List.of(new ExerciseSlotDto(EXERCISE_ID, 1,
                         List.of(new SetConfigDto(SetType.REPS, 10, null, null, null)), null)),
                 null, Set.of(), Set.of(), Set.of());
         when(exerciseRepository.findById(EXERCISE_ID)).thenReturn(Optional.empty());
+        when(exerciseUseCase.getVisibleByIds(Set.of(EXERCISE_ID), OWNER_ID)).thenReturn(Map.of());
+        when(muscleSummaryCalculator.aggregate(anyList())).thenReturn(MuscleSummary.empty());
+        when(routineRepository.save(any(Routine.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        assertThatThrownBy(() -> routineService.create(req, OWNER_ID))
-                .isInstanceOf(ResourceNotFoundException.class);
-        verify(exerciseUseCase, never()).getById(any(), any());
-        verify(routineRepository, never()).save(any());
+        RoutineResponse response = routineService.create(req, OWNER_ID);
+
+        assertThat(response.slots().get(0).exercise()).isNull();
+        ArgumentCaptor<List<MuscleSummary>> captor = ArgumentCaptor.forClass(List.class);
+        verify(muscleSummaryCalculator).aggregate(captor.capture());
+        assertThat(captor.getValue()).isEmpty();
+    }
+
+    @Test
+    void update_succeedsWhenSlotReferencesADeletedExercise() {
+        ExerciseSlot slot = ExerciseSlot.reconstitute(EXERCISE_ID, 1,
+                List.of(SetConfig.reps(10, null, null)), null);
+        Routine routine = Routine.reconstitute(10L, OWNER_ID, "Push Day", null, Level.INTERMEDIATE,
+                null, Duration.ZERO, List.of(slot), null, MuscleSummary.empty(),
+                Set.of(), Set.of(), Set.of(), null, null, null);
+        when(routineRepository.findById(10L)).thenReturn(Optional.of(routine));
+        when(exerciseRepository.findById(EXERCISE_ID)).thenReturn(Optional.empty());
+        when(exerciseUseCase.getVisibleByIds(Set.of(EXERCISE_ID), OWNER_ID)).thenReturn(Map.of());
+        when(muscleSummaryCalculator.aggregate(anyList())).thenReturn(MuscleSummary.empty());
+        when(routineRepository.save(any(Routine.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        UpdateRoutineRequest req = new UpdateRoutineRequest("Updated Title", null, null, null, false,
+                List.of(new ExerciseSlotDto(EXERCISE_ID, 1,
+                        List.of(new SetConfigDto(SetType.REPS, 10, null, null, null)), null)),
+                null, null, null, null);
+
+        RoutineResponse response = routineService.update(10L, req, OWNER_ID);
+
+        assertThat(response.title()).isEqualTo("Updated Title");
+        assertThat(response.slots().get(0).exercise()).isNull();
     }
 
     @Test
@@ -175,7 +203,7 @@ class RoutineServiceTest {
         Exercise exercise = ownedExercise();
         when(exerciseRepository.findById(EXERCISE_ID)).thenReturn(Optional.of(exercise));
         when(exerciseVisibilityResolver.isVisible(exercise, OWNER_ID)).thenReturn(true);
-        when(exerciseUseCase.getById(EXERCISE_ID, OWNER_ID)).thenReturn(exerciseResponse(Map.of()));
+        when(exerciseUseCase.getVisibleByIds(Set.of(EXERCISE_ID), OWNER_ID)).thenReturn(Map.of(EXERCISE_ID, exerciseResponse(Map.of())));
         when(muscleSummaryCalculator.aggregate(anyList())).thenReturn(MuscleSummary.empty());
         when(routineRepository.save(any(Routine.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -195,7 +223,7 @@ class RoutineServiceTest {
         Exercise exercise = ownedExercise();
         when(exerciseRepository.findById(EXERCISE_ID)).thenReturn(Optional.of(exercise));
         when(exerciseVisibilityResolver.isVisible(exercise, OWNER_ID)).thenReturn(true);
-        when(exerciseUseCase.getById(EXERCISE_ID, OWNER_ID)).thenReturn(exerciseResponse(Map.of()));
+        when(exerciseUseCase.getVisibleByIds(Set.of(EXERCISE_ID), OWNER_ID)).thenReturn(Map.of(EXERCISE_ID, exerciseResponse(Map.of())));
         when(muscleSummaryCalculator.aggregate(anyList())).thenReturn(MuscleSummary.empty());
         when(mediaService.claimImage("fresh-token", OWNER_ID)).thenReturn(200L);
         when(routineRepository.save(any(Routine.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -216,7 +244,7 @@ class RoutineServiceTest {
         Exercise exercise = ownedExercise();
         when(exerciseRepository.findById(EXERCISE_ID)).thenReturn(Optional.of(exercise));
         when(exerciseVisibilityResolver.isVisible(exercise, OWNER_ID)).thenReturn(true);
-        when(exerciseUseCase.getById(EXERCISE_ID, OWNER_ID)).thenReturn(exerciseResponse(Map.of()));
+        when(exerciseUseCase.getVisibleByIds(Set.of(EXERCISE_ID), OWNER_ID)).thenReturn(Map.of(EXERCISE_ID, exerciseResponse(Map.of())));
         when(muscleSummaryCalculator.aggregate(anyList())).thenReturn(MuscleSummary.empty());
         doThrow(new MediaNotOwnedException()).when(mediaService).verifyImageOwnership(99L, OWNER_ID);
 
