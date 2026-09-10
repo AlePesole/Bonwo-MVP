@@ -13,7 +13,6 @@ import com.alessandropesole.bonwoapp.catalog.domain.port.out.EquipmentRepository
 import com.alessandropesole.bonwoapp.catalog.domain.port.out.MuscleSubGroupRepository;
 import com.alessandropesole.bonwoapp.catalog.domain.port.out.TrainingGoalRepository;
 import com.alessandropesole.bonwoapp.exercise.application.dto.ExerciseResponse;
-import com.alessandropesole.bonwoapp.exercise.domain.model.Exercise;
 import com.alessandropesole.bonwoapp.exercise.domain.model.MuscleSummary;
 import com.alessandropesole.bonwoapp.exercise.domain.port.in.publication.ExercisePublicationUseCase;
 import com.alessandropesole.bonwoapp.exercise.domain.port.in.ExerciseUseCase;
@@ -43,6 +42,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -181,17 +181,21 @@ public class RoutineService implements RoutineUseCase {
 
     private void validateSlotExercisesAreAccessible(List<ExerciseSlot> slots, Long ownerId) {
         for (ExerciseSlot slot : slots) {
-            Exercise exercise = exerciseRepository.findById(slot.getExerciseId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Exercise", slot.getExerciseId()));
-            if (!exerciseVisibilityResolver.isVisible(exercise, ownerId))
-                throw new ForbiddenOperationException(
-                        "Exercise " + slot.getExerciseId() + " is not accessible to you");
+            exerciseRepository.findById(slot.getExerciseId()).ifPresent(exercise -> {
+                if (!exerciseVisibilityResolver.isVisible(exercise, ownerId))
+                    throw new ForbiddenOperationException(
+                            "Exercise " + slot.getExerciseId() + " is not accessible to you");
+            });
         }
     }
 
     private MuscleSummary resolveAndAggregateMuscleSummary(List<ExerciseSlot> slots, Long ownerId) {
-        List<MuscleSummary> summaries = slots.stream()
-                .map(slot -> MuscleSummary.of(exerciseUseCase.getById(slot.getExerciseId(), ownerId).muscleSummary()))
+        Set<Long> exerciseIds = slots.stream().map(ExerciseSlot::getExerciseId).collect(Collectors.toSet());
+        Map<Long, ExerciseResponse> exercises = exerciseUseCase.getVisibleByIds(exerciseIds, ownerId);
+        List<MuscleSummary> summaries = exerciseIds.stream()
+                .map(exercises::get)
+                .filter(Objects::nonNull)
+                .map(e -> MuscleSummary.of(e.muscleSummary()))
                 .toList();
         return muscleSummaryCalculator.aggregate(summaries);
     }

@@ -94,7 +94,6 @@ class TrainingSessionServiceTest {
         Exercise exercise = ownedExercise();
         when(exerciseRepository.findById(EXERCISE_ID)).thenReturn(Optional.of(exercise));
         when(exerciseVisibilityResolver.isVisible(exercise, OWNER_ID)).thenReturn(true);
-        when(exerciseUseCase.getById(EXERCISE_ID, OWNER_ID)).thenReturn(exerciseResponse(Map.of(1L, 0.8)));
         when(exerciseUseCase.getVisibleByIds(Set.of(EXERCISE_ID), OWNER_ID))
                 .thenReturn(Map.of(EXERCISE_ID, exerciseResponse(Map.of(1L, 0.8))));
         when(muscleSummaryCalculator.aggregate(anyList())).thenReturn(MuscleSummary.of(Map.of(1L, 0.8)));
@@ -149,7 +148,6 @@ class TrainingSessionServiceTest {
         Exercise exercise = ownedExercise();
         when(exerciseRepository.findById(EXERCISE_ID)).thenReturn(Optional.of(exercise));
         when(exerciseVisibilityResolver.isVisible(exercise, OWNER_ID)).thenReturn(true);
-        when(exerciseUseCase.getById(EXERCISE_ID, OWNER_ID)).thenReturn(exerciseResponse(Map.of(1L, 0.5)));
         when(exerciseUseCase.getVisibleByIds(Set.of(EXERCISE_ID), OWNER_ID))
                 .thenReturn(Map.of(EXERCISE_ID, exerciseResponse(Map.of(1L, 0.5))));
         when(muscleSummaryCalculator.aggregate(anyList())).thenReturn(MuscleSummary.of(Map.of(1L, 0.5)));
@@ -165,6 +163,26 @@ class TrainingSessionServiceTest {
         assertThat(response.slots().get(0).sets().get(0).done()).isTrue();
         assertThat(response.finalNote()).isEqualTo("halfway note");
         assertThat(response.muscleSummary()).isEqualTo(Map.of(1L, 0.5));
+    }
+
+    @Test
+    void update_succeedsWhenSlotReferencesADeletedExercise() {
+        TrainingSession session = inProgressSession();
+        when(trainingSessionRepository.findById(SESSION_ID)).thenReturn(Optional.of(session));
+        when(exerciseRepository.findById(EXERCISE_ID)).thenReturn(Optional.empty());
+        when(exerciseUseCase.getVisibleByIds(Set.of(EXERCISE_ID), OWNER_ID)).thenReturn(Map.of());
+        when(muscleSummaryCalculator.aggregate(anyList())).thenReturn(MuscleSummary.empty());
+        when(trainingSessionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        var req = new UpdateTrainingSessionRequest(
+                List.of(new TrainingSlotDto(EXERCISE_ID, 1,
+                        List.of(new TrainingSetDto(SetType.REPS, 10, null, null, null, true)), null)),
+                "halfway note");
+
+        TrainingSessionResponse response = trainingSessionService.update(SESSION_ID, req, OWNER_ID);
+
+        assertThat(response.slots().get(0).exercise()).isNull();
+        assertThat(response.finalNote()).isEqualTo("halfway note");
     }
 
     @Test
